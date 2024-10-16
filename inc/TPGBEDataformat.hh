@@ -413,7 +413,7 @@ private:
       assert(ib<7) ; assert(istrm<=2) ; assert(iw<8) ;
       unpackedWords[ib][istrm][iw] = val;}
     void setModuleInformation(uint32_t ib, uint32_t imod, uint32_t ibin, uint32_t bininstance, uint32_t val) {
-      assert(ib<7); assert(ibin<9); 
+      assert(ib<7); assert(ibin<9); assert(bininstance<2); 
       moduleInformation[ib][imod][ibin][bininstance] = val;}
     void setSlinkBx(uint16_t bx) {bxId = bx;}
     
@@ -430,7 +430,6 @@ private:
     }
     const uint32_t *getElinks(uint32_t ib) const { return elinks[ib];}
     const uint32_t *getUnpkWords(uint32_t ib, uint32_t istrm = 0) const { return unpackedWords[ib][istrm];}
-    //const uint32_t *getModuleInfos(uint32_t ib, uint32_t ilpgbt) const { return moduleInformation[ib][ilpgbt];}
     void print(){
       
       for(unsigned ib(0);ib<7;ib++){
