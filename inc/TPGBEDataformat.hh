@@ -412,6 +412,9 @@ private:
     void setUnpkWord(uint32_t ib, uint32_t istrm, uint32_t iw, uint32_t val) {
       assert(ib<7) ; assert(istrm<=2) ; assert(iw<8) ;
       unpackedWords[ib][istrm][iw] = val;}
+    void setModuleInformation(uint32_t ib, uint32_t imod, uint32_t ibin, uint32_t bininstance, uint32_t val) {
+      assert(ib<7); assert(ibin<9); 
+      moduleInformation[ib][imod][ibin][bininstance] = val;}
     void setSlinkBx(uint16_t bx) {bxId = bx;}
     
     const uint32_t getSlinkBx() const {return uint32_t(bxId);}
@@ -419,8 +422,15 @@ private:
     uint32_t getNofUnpkWords(uint32_t istrm = 0) const { return uint32_t(nofUnpkdWords[istrm]);}
     uint32_t  getElink(uint32_t ib, uint32_t iw) const { return elinks[ib][iw];}
     uint32_t  getUnpkWord(uint32_t ib, uint32_t iw, uint32_t istrm = 0) const { return unpackedWords[ib][istrm][iw];}
+    uint32_t getModuleInformation(uint32_t ib, uint32_t imod, uint32_t ibin, uint32_t bininstance) const {return moduleInformation[ib][imod][ibin][bininstance];}
+    bool moduleInfoIsValid(uint32_t ib, uint32_t imod, uint32_t ibin, uint32_t bininstance) const {
+      if(moduleInformation[ib][imod][ibin][bininstance]!=0) return true; 
+      else if(moduleInformation[ib][imod][ibin][bininstance]==0 && ibin==0 && bininstance==0 && (moduleInformation[ib][imod][ibin+1][bininstance]!=0 || moduleInformation[ib][imod][ibin][bininstance+1]!=0)) return true;
+      else return false;
+    }
     const uint32_t *getElinks(uint32_t ib) const { return elinks[ib];}
     const uint32_t *getUnpkWords(uint32_t ib, uint32_t istrm = 0) const { return unpackedWords[ib][istrm];}
+    //const uint32_t *getModuleInfos(uint32_t ib, uint32_t ilpgbt) const { return moduleInformation[ib][ilpgbt];}
     void print(){
       
       for(unsigned ib(0);ib<7;ib++){
@@ -479,6 +489,7 @@ private:
     uint16_t bxId ; //from Slink trailer
     uint32_t elinks[7][3]; //the first 7 is for bx and second one for number of elinks
     uint32_t unpackedWords[7][2][8]; //7:bxs,2:stream,8:words per half 
+    uint32_t moduleInformation[7][5][9][2]; //7:bxs, 5:mods, 9: bins, 2:instances
   };
 
 }

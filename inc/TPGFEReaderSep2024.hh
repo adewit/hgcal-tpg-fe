@@ -568,7 +568,7 @@ namespace TPGFEReader{
     void setNofCAFESep(int maxsep) { maxCAFESeps = maxsep;}
     void init(uint32_t, uint32_t, uint32_t);
         
-    void getEvents(std::vector<uint64_t>& refEvents, uint64_t& minEventTrig, uint64_t& maxEventTrig, std::map<uint64_t,std::vector<std::pair<uint32_t,TPGBEDataformat::Trig24Data>>>& econtarray);
+    void getEvents(uint32_t relayNumber, std::vector<uint64_t>& refEvents, uint64_t& minEventTrig, uint64_t& maxEventTrig, std::map<uint64_t,std::vector<std::pair<uint32_t,TPGBEDataformat::Trig24Data>>>& econtarray);
     void terminate();
     
   private:
@@ -783,7 +783,7 @@ namespace TPGFEReader{
   }
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
-  void ECONTReader::getEvents(std::vector<uint64_t>& refEvents, uint64_t& minEventTrig, uint64_t& maxEventTrig, std::map<uint64_t,std::vector<std::pair<uint32_t,TPGBEDataformat::Trig24Data>>>& econtarray){
+  void ECONTReader::getEvents(uint32_t relayNumber, std::vector<uint64_t>& refEvents, uint64_t& minEventTrig, uint64_t& maxEventTrig, std::map<uint64_t,std::vector<std::pair<uint32_t,TPGBEDataformat::Trig24Data>>>& econtarray){
 
     //Set up specific records to interpet the formats
     const Hgcal10gLinkReceiver::RecordStarting *rStart((Hgcal10gLinkReceiver::RecordStarting*)r);
@@ -1023,6 +1023,7 @@ namespace TPGFEReader{
 	  uint32_t unpackedWord[2][3][7][2][8]; //2:lpGBT, 3:ECON-T, 7:bxs, 2:streams, 8:words
 	  uint32_t iunpkw = 0;
 	  ibx = 0;
+	  std::cout<<"Unpacker output for ch1 "<<std::endl;
 	  for(int iw = loc[iblock]+1; iw <= (loc[iblock]+size[iblock]) ; iw++ ){
 	    uint32_t col0 = (p64[iw] >> (32+16)) & 0xFFFF ;
 	    uint32_t col1 = (p64[iw] >> 32) & 0xFFFF ;
@@ -1035,7 +1036,7 @@ namespace TPGFEReader{
 	      unpackedWord[0][2][ibx][0][iunpkw] = col0; //BC4
 	      iunpkw++;
 	    }
-	    if((nEvents < nShowEvents) or (scanMode and boe->eventId()==inspectEvent))
+	    //if((nEvents < nShowEvents) or (scanMode and boe->eventId()==inspectEvent))
 	      std::cout<<"iloc: "<< iw
 		       << std::hex
 		       <<", col0 : 0x" << std::setfill('0') << std::setw(4) << col0 <<", "
@@ -1057,6 +1058,7 @@ namespace TPGFEReader{
 	  iunpkw = 0;
 	  ibx = 0;
 	  uint32_t col2_prev,col3_prev;
+	  std::cout<<"unpacker output for ch2"<<std::endl;
 	  for(int iw = loc[iblock]+1; iw <= (loc[iblock]+size[iblock]) ; iw++ ){
 	    uint32_t col0 = (p64[iw] >> (32+16)) & 0xFFFF ;
 	    uint32_t col1 = (p64[iw] >> 32) & 0xFFFF ;
@@ -1070,7 +1072,7 @@ namespace TPGFEReader{
 	      unpackedWord[1][2][ibx][0][iunpkw] = col0; //STC4A-6
 	      iunpkw++;
 	    }
-	    if((nEvents < nShowEvents) or (scanMode and boe->eventId()==inspectEvent))
+	    //if((nEvents < nShowEvents) or (scanMode and boe->eventId()==inspectEvent))
 	      std::cout<<"iloc: "<< iw
 		       << std::hex
 		       <<", col0 : 0x" << std::setfill('0') << std::setw(4) << col0 <<", "
@@ -1083,6 +1085,192 @@ namespace TPGFEReader{
 	    unpkIndx++;
 	    if(unpkIndx>0 and (unpkIndx-unpkBgnOffset)%8==0) ibx++;
 	  }
+
+	  uint32_t tcprocOutput[2][7][9][9][2]; //2: lpGBTs, 7:bxs, 5: modules, 9:bins, 2:tcs. Create this outside of the if statement
+      if (relayNumber>=1727211141){
+	      iblock = 10;
+	      int tcprocBgnOffset = 0;
+	      int tcprocIndx = 0;
+	      for (int il=0;il<2;il++){
+		    for (int ib=0;ib<7;ib++){
+			    for(int im=0;im<5;im++){
+		    		for(int ibi=0;ibi<9;ibi++){
+				    	for(int it=0;it<2;it++){
+				    		tcprocOutput[il][ib][im][ibi][it]=0;
+					    }
+				    }
+			    }
+		    }
+	      }
+	      uint32_t itcprocout = 0;
+	      ibx = 0;
+	      for(int itc = loc[iblock]+1; itc<= (loc[iblock]+size[iblock]); itc++){
+	    	uint32_t col0 = (p64[itc]>>(32+16)) & 0x7FFF ;//bits in between sub-words (15 bit) should not be taken into account
+	    	uint32_t col1 = (p64[itc]>>(32)) & 0x7FFF ;
+		    uint32_t col2 = (p64[itc]>>(32-16)) & 0x7FFF ;
+		    uint32_t col3 = p64[itc] & 0x7FFF ;
+		    if(tcprocIndx>=tcprocBgnOffset and (tcprocIndx-tcprocBgnOffset)%8==0) itcprocout=0;
+	        if(tcprocIndx>=tcprocBgnOffset){
+		      if(itcprocout==0) {//Module 0, bins 1+2 (2TC/each)
+	            tcprocOutput[1][ibx][0][0][0] = col3; 
+	            tcprocOutput[1][ibx][0][0][1] = col2; 
+	            tcprocOutput[1][ibx][0][1][0] = col1; 
+	            tcprocOutput[1][ibx][0][1][1] = col0; 
+		      } else if(itcprocout==1){//Module 0, bins 3-6
+			    tcprocOutput[1][ibx][0][2][0] = col3; 
+	            tcprocOutput[1][ibx][0][3][0] = col2; 
+	            tcprocOutput[1][ibx][0][4][0] = col1; 
+	            tcprocOutput[1][ibx][0][5][0] = col0; 
+		      } else if(itcprocout==2){//Module 0, bins 7-9
+		    	tcprocOutput[1][ibx][0][6][0] = col3; 
+	            tcprocOutput[1][ibx][0][7][0] = col2; 
+	            tcprocOutput[1][ibx][0][8][0] = col1; 
+		      } else if(itcprocout==3||itcprocout==4){//Module 1, 2
+		    	tcprocOutput[1][ibx][itcprocout-2][0][0] = col3; 
+	            tcprocOutput[1][ibx][itcprocout-2][1][0] = col2; 
+	            tcprocOutput[1][ibx][itcprocout-2][2][0] = col1; 
+	            tcprocOutput[1][ibx][itcprocout-2][3][0] = col0; 
+	    	  } else if(itcprocout==5){//Module  3, bins 1+2
+	            tcprocOutput[1][ibx][3][0][0] = col3; 
+	            tcprocOutput[1][ibx][3][0][1] = col2; 
+    	        tcprocOutput[1][ibx][3][1][0] = col1; 
+    	        tcprocOutput[1][ibx][3][1][1] = col0; 
+    		  } else if(itcprocout==6){//Module 3, bins 3-6
+		    	tcprocOutput[1][ibx][3][2][0] = col3; 
+	            tcprocOutput[1][ibx][3][3][0] = col2; 
+	            tcprocOutput[1][ibx][3][4][0] = col1; 
+	            tcprocOutput[1][ibx][3][5][0] = col0; 
+	    	  } else if(itcprocout==7){//Module 3, bins 7-9
+		     	tcprocOutput[1][ibx][3][6][0] = col3; 
+	            tcprocOutput[1][ibx][3][7][0] = col2; 
+	            tcprocOutput[1][ibx][3][8][0] = col1; 
+		      }
+	         itcprocout++;
+	       }	
+		   tcprocIndx++;
+	       if(tcprocIndx>0 and (tcprocIndx-tcprocBgnOffset)%8==0) ibx++; 
+	    }
+    
+    	  iblock = 11;
+    	  tcprocBgnOffset = 0;
+    	  tcprocIndx = 0;
+    	  itcprocout = 0;
+    	  ibx = 0;
+    	  for(int itc = loc[iblock]+1; itc<= (loc[iblock]+size[iblock]); itc++){
+    		uint32_t col0 = (p64[itc]>>(32+16)) & 0x7FFF ;//bits in between sub-words (15 bit) should not be taken into account
+    		uint32_t col1 = (p64[itc]>>(32)) & 0x7FFF ;
+    		uint32_t col2 = (p64[itc]>>(32-16)) & 0x7FFF ;
+    		uint32_t col3 = p64[itc] & 0x7FFF ;
+    		if(tcprocIndx>=tcprocBgnOffset and (tcprocIndx-tcprocBgnOffset)%8==0) itcprocout=0;
+    	    if(tcprocIndx>=tcprocBgnOffset){
+    		  if(itcprocout==0) {//Module 4, bins 1-4
+    	        tcprocOutput[1][ibx][4][0][0] = col3; 
+    	        tcprocOutput[1][ibx][4][1][0] = col2; 
+    	        tcprocOutput[1][ibx][4][2][0] = col1; 
+    	        tcprocOutput[1][ibx][4][3][0] = col0; 
+    		  } else if(itcprocout==1){//Module 4, bins 5-8
+    			tcprocOutput[1][ibx][4][4][0] = col3; 
+    	        tcprocOutput[1][ibx][4][5][0] = col2; 
+    	        tcprocOutput[1][ibx][4][6][0] = col1; 
+    	        tcprocOutput[1][ibx][4][7][0] = col0; 
+    		  } else if(itcprocout==2){//Module 4, bin 9
+    			tcprocOutput[1][ibx][4][8][0] = col3; 
+    	        tcprocOutput[1][ibx][4][7][0] = col2; 
+    	        tcprocOutput[1][ibx][4][8][0] = col1; 
+    		  }
+    	      itcprocout++;
+    	    }	
+    		tcprocIndx++;
+    	    if(tcprocIndx>0 and (tcprocIndx-tcprocBgnOffset)%8==0) ibx++;  
+    	 }
+    
+    	  iblock = 12;
+    	  tcprocBgnOffset = 0;
+    	  tcprocIndx = 0;
+    	  itcprocout = 0;
+    	  ibx = 0;
+    	  for(int itc = loc[iblock]+1; itc<= (loc[iblock]+size[iblock]); itc++){//this corresponds to chn1 and 2 above so put in 0th lpgbt pair index
+    		uint32_t col0 = (p64[itc]>>(32+16)) & 0x7FFF ;//bits in between sub-words (15 bit) should not be taken into account
+    		uint32_t col1 = (p64[itc]>>(32)) & 0x7FFF ;
+    		uint32_t col2 = (p64[itc]>>(32-16)) & 0x7FFF ;
+    		uint32_t col3 = p64[itc] & 0x7FFF ;
+    		if(tcprocIndx>=tcprocBgnOffset and (tcprocIndx-tcprocBgnOffset)%8==0) itcprocout=0;
+    	    if(tcprocIndx>=tcprocBgnOffset){
+    		  if(itcprocout==0) {//Module 0, bins 1+2 (2TC/each)
+    	        tcprocOutput[0][ibx][0][0][0] = col3; 
+    	        tcprocOutput[0][ibx][0][0][1] = col2; 
+    	        tcprocOutput[0][ibx][0][1][0] = col1; 
+    	        tcprocOutput[0][ibx][0][1][1] = col0; 
+    		  } else if(itcprocout==1){//Module 0, bins 3-6
+    			tcprocOutput[0][ibx][0][2][0] = col3; 
+    	        tcprocOutput[0][ibx][0][3][0] = col2; 
+    	        tcprocOutput[0][ibx][0][4][0] = col1; 
+    	        tcprocOutput[0][ibx][0][5][0] = col0; 
+    		  } else if(itcprocout==2){//Module 0, bins 7-9
+    			tcprocOutput[0][ibx][0][6][0] = col3; 
+    	        tcprocOutput[0][ibx][0][7][0] = col2; 
+    	        tcprocOutput[0][ibx][0][8][0] = col1; 
+    		  } else if(itcprocout==3||itcprocout==4){//Module 1, 2
+    			tcprocOutput[0][ibx][itcprocout-2][0][0] = col3; 
+    	        tcprocOutput[0][ibx][itcprocout-2][1][0] = col2; 
+    	        tcprocOutput[0][ibx][itcprocout-2][2][0] = col1; 
+    	        tcprocOutput[0][ibx][itcprocout-2][3][0] = col0; 
+    		  } else if(itcprocout==5){//Module  3, bins 1+2
+    	        tcprocOutput[0][ibx][3][0][0] = col3; 
+    	        tcprocOutput[0][ibx][3][0][1] = col2; 
+    	        tcprocOutput[0][ibx][3][1][0] = col1; 
+    	        tcprocOutput[0][ibx][3][1][1] = col0; 
+    		  } else if(itcprocout==6){//Module 3, bins 3-6
+    			tcprocOutput[0][ibx][3][2][0] = col3; 
+    	        tcprocOutput[0][ibx][3][3][0] = col2; 
+    	        tcprocOutput[0][ibx][3][4][0] = col1; 
+    	        tcprocOutput[0][ibx][3][5][0] = col0; 
+    		  } else if(itcprocout==7){//Module 3, bins 7-9
+    		  	tcprocOutput[0][ibx][3][6][0] = col3; 
+    	        tcprocOutput[0][ibx][3][7][0] = col2; 
+    	        tcprocOutput[0][ibx][3][8][0] = col1; 
+    		  }
+    	      itcprocout++;
+    	    }
+    		tcprocIndx++;
+    	    if(tcprocIndx>0 and (tcprocIndx-tcprocBgnOffset)%8==0) ibx++; 
+    	 }
+    
+    	  iblock = 13;
+    	  tcprocBgnOffset = 0;
+    	  tcprocIndx = 0;
+    	  itcprocout = 0;
+    	  ibx = 0;
+    	  for(int itc = loc[iblock]+1; itc<= (loc[iblock]+size[iblock]); itc++){
+    		uint32_t col0 = (p64[itc]>>(32+16)) & 0x7FFF ;//bits in between sub-words (15 bit) should not be taken into account
+    		uint32_t col1 = (p64[itc]>>(32)) & 0x7FFF ;
+    		uint32_t col2 = (p64[itc]>>(32-16)) & 0x7FFF ;
+    		uint32_t col3 = p64[itc] & 0x7FFF ;
+    		if(tcprocIndx>=tcprocBgnOffset and (tcprocIndx-tcprocBgnOffset)%8==0) itcprocout=0;
+    	    if(tcprocIndx>=tcprocBgnOffset){
+    		  if(itcprocout==0) {//Module 4, bins 1+2 (2TC/each)
+    	        tcprocOutput[0][ibx][4][0][0] = col3; 
+    	        tcprocOutput[0][ibx][4][0][1] = col2; 
+    	        tcprocOutput[0][ibx][4][1][0] = col1; 
+    	        tcprocOutput[0][ibx][4][1][1] = col0; 
+    		  } else if(itcprocout==1){//Module 0, bins 3-6
+    			tcprocOutput[0][ibx][4][2][0] = col3; 
+    	        tcprocOutput[0][ibx][4][3][0] = col2; 
+    	        tcprocOutput[0][ibx][4][4][0] = col1; 
+    	        tcprocOutput[0][ibx][4][5][0] = col0; 
+    		  } else if(itcprocout==2){//Module 0, bins 7-9
+    			tcprocOutput[0][ibx][4][6][0] = col3; 
+    	        tcprocOutput[0][ibx][4][7][0] = col2; 
+    	        tcprocOutput[0][ibx][4][8][0] = col1; 
+    		  }
+    	      itcprocout++;
+    	    }	 
+    		tcprocIndx++;
+    	    if(tcprocIndx>0 and (tcprocIndx-tcprocBgnOffset)%8==0) ibx++; 
+    	 }
+      }
+    
+
 	  /////////////////////////////////////////////////////////////////
 	  // struct Trig24Data{
 	  //   uint8_t nofElinks, nofUnpkdWords;
@@ -1113,6 +1301,15 @@ namespace TPGFEReader{
 		}
 		for(uint8_t iw=0;iw<trdata[ilp][iecon].getNofUnpkWords();iw++) trdata[ilp][iecon].setUnpkWord(ib, iw, unpackedWord[ilp][iecon][ib][0][iw]) ;
 		if(ilp==1 and iecon==0) for(uint8_t iw=0;iw<trdata[ilp][iecon].getNofUnpkWords(1);iw++) trdata[ilp][iecon].setUnpkWord(ib, 1, iw, unpackedWord[ilp][iecon][ib][1][iw]) ;
+		if(iecon==0 and relayNumber>1727211141){
+		    for(int ik=0;ik<5;ik++){
+				for(int iw=0;iw<9;iw++){
+					for(int iinst=0;iinst<2;iinst++){
+				      trdata[ilp][iecon].setModuleInformation(ib, ik, iw, iinst, tcprocOutput[ilp][ib][ik][iw][iinst]);//Module info not just for the given module ID!
+					}
+				}
+			}
+		}
 	      }//nof bxs
 	      trdata[ilp][iecon].setSlinkBx(eoe->bxId());
 	      econtarray[eventId].push_back( std::make_pair(moduleId,trdata[ilp][iecon]) );

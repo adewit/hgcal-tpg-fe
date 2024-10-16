@@ -94,6 +94,31 @@ namespace l1thgcfirmware {
       }
     }
 
+
+    void configureSeptemberTestBeamMappingInfo(){
+      for(unsigned j=0;j<9; j++){ //Module 256 - BC, and 8448 - STC16, 9 bins with first two bins having two slots; and 8960 - STC16, 9 bins. Treat 9472 similarly, even if not read out
+        chn_frame_slots_per_mod_and_col_[256][j].push_back(std::make_pair(0,0));
+        chn_frame_slots_per_mod_and_col_[8448][j].push_back(std::make_pair(0,0));
+        chn_frame_slots_per_mod_and_col_[8960][j].push_back(std::make_pair(0,0));
+        chn_frame_slots_per_mod_and_col_[9472][j].push_back(std::make_pair(0,0));
+        if (j<2){
+          chn_frame_slots_per_mod_and_col_[256][j].push_back(std::make_pair(0,0));
+          chn_frame_slots_per_mod_and_col_[8448][j].push_back(std::make_pair(0,0));
+        }
+        max_tcs_per_module_and_column_[256].push_back(std::make_pair(j,chn_frame_slots_per_mod_and_col_[256][j].size()));
+        max_tcs_per_module_and_column_[8448].push_back(std::make_pair(j,chn_frame_slots_per_mod_and_col_[8448][j].size()));
+        max_tcs_per_module_and_column_[8960].push_back(std::make_pair(j,chn_frame_slots_per_mod_and_col_[8960][j].size()));
+        max_tcs_per_module_and_column_[9472].push_back(std::make_pair(j,chn_frame_slots_per_mod_and_col_[9472][j].size()));
+      }
+
+      for(unsigned j=0;j<4;j++) { //Module 768, 1280 - BC, 4 bins read out
+        chn_frame_slots_per_mod_and_col_[768][j].push_back(std::make_pair(0,0));
+        chn_frame_slots_per_mod_and_col_[1280][j].push_back(std::make_pair(0,0));
+        max_tcs_per_module_and_column_[768].push_back(std::make_pair(j,chn_frame_slots_per_mod_and_col_[768][j].size()));
+        max_tcs_per_module_and_column_[1280].push_back(std::make_pair(j,chn_frame_slots_per_mod_and_col_[1280][j].size()));
+      }
+    }
+
     unsigned phiSector() const { return sector120_; }
     uint32_t fpgaID() const { return fpga_id_; }
     unsigned getColBudgetAtIndex(unsigned moduleId, unsigned theColumnIndex) const {

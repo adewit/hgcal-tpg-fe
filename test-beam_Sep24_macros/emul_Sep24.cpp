@@ -31,6 +31,77 @@
 #include "TPGFEModuleEmulation.hh"
 #include "TPGFEReaderSep2024.hh"
 #include "Stage1IO.hh"
+#include "HGCalLayer1PhiOrderFwConfig.h"
+#include "HGCalLayer1PhiOrderFwImpl.h"
+#include "HGCalTriggerCell_SA.h"
+
+l1thgcfirmware::HGCalTriggerCellSACollection convertOSPToTCs(std::vector<TPGBEDataformat::UnpackerOutputStreamPair> &upVec){
+  l1thgcfirmware::HGCalTriggerCellSACollection theTCVec;
+  for (auto& up : upVec){
+      unsigned theModId_ = up.getModuleId();
+      unsigned nChans_ = up.numberOfValidChannels();
+      for (unsigned iChn = 0; iChn < nChans_; iChn++){
+        unsigned nTC=0;
+        unsigned nStream=0;
+        if(nChans_<7){
+            nTC=iChn;
+        } else {
+            nStream = iChn%2;
+            nTC = (iChn-nStream)/2;
+        } 
+        theTCVec.emplace_back(1,1,0,up.channelNumber(nStream,nTC),0,up.channelEnergy(nStream,nTC));
+        theTCVec.back().setModuleId(theModId_);
+      }
+  }
+  return theTCVec;
+}
+
+bool hasDifferentTCs(l1thgcfirmware::HGCalTriggerCellSACollection tcOrig, l1thgcfirmware::HGCalTriggerCellSACollection tcToComp){
+   if(tcOrig.size()!=tcToComp.size()) return true;
+   for(unsigned i = 0; i<tcOrig.size(); i++){ 
+       if (tcOrig.at(i).energy()!=tcToComp.at(i).energy() || tcOrig.at(i).phi()!=tcToComp.at(i).phi() || tcOrig.at(i).channel()!=tcToComp.at(i).channel() || tcOrig.at(i).frame()!=tcToComp.at(i).frame() || tcOrig.at(i).column()!=tcToComp.at(i).column()){
+	       return true;
+       }
+   }
+   return false;
+}
+
+std::map<uint32_t,std::vector<std::pair<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection>>> createTCsFromTriggerData(TPGBEDataformat::Trig24Data trdata_){//ibx, module ID
+    std::map<uint32_t,std::vector<std::pair<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection>>> theTCsFromTriggerData_;
+    std::map<uint32_t,uint32_t> moduleIndicesToID;
+    moduleIndicesToID[0]=256;
+    moduleIndicesToID[1]=768;
+    moduleIndicesToID[2]=1280;
+    moduleIndicesToID[3]=8448;
+    moduleIndicesToID[4]=8960;
+    for(int ibx=0;ibx<7;ibx++){
+      std::vector<std::pair<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection>> per_mod_vec_tcs;
+      for(int imod=0;imod<5;imod++){
+        l1thgcfirmware::HGCalTriggerCellSACollection tmp_tcs;
+        for(int ibin=0;ibin<9;ibin++){
+          for(int iinstance=0;iinstance<2;iinstance++){
+            if(trdata_.moduleInfoIsValid(ibx,imod,ibin,iinstance)){
+              uint32_t tcoutputword = trdata_.getModuleInformation(ibx,imod,ibin,iinstance);
+              //std::cout<<" ibx "<<ibx<<" module "<<imod<<" bin "<<ibin<<" instance "<<iinstance<<" :"<< std::endl;
+              //std::cout<<"tcoutputword "<<tcoutputword<<std::endl;
+              uint32_t tcout_energy = tcoutputword&0x1FF;
+              uint32_t tcout_channel = (tcoutputword>>9)&0x3F;//3F after bit shift, otherwise you don't get the correct number
+              //std::cout<<" energy "<<std::dec<<tcout_energy<<std::endl;
+              //std::cout<<" channel "<<std::dec<<tcout_channel<<std::endl;
+              tmp_tcs.emplace_back(1,1,0,tcout_channel,0,tcout_energy);
+              tmp_tcs.back().setColumn(ibin);
+              tmp_tcs.back().setChannel(0);
+              tmp_tcs.back().setFrame(0);
+              tmp_tcs.back().setModuleId(moduleIndicesToID[imod]);
+            }
+          }
+        }
+        per_mod_vec_tcs.push_back(std::make_pair(moduleIndicesToID[imod],tmp_tcs));
+      }
+      theTCsFromTriggerData_[ibx]=per_mod_vec_tcs;
+    }
+  return theTCsFromTriggerData_;
+}
 
 int main(int argc, char** argv)
 {
@@ -84,7 +155,7 @@ int main(int argc, char** argv)
   void FillHistogram(bool, bool, TDirectory*&, uint32_t, uint64_t, uint16_t, uint32_t, const uint32_t *, const uint32_t *, uint32_t, uint32_t,
 		     TPGFEDataformat::TcRawDataPacket&, TPGFEDataformat::TcRawDataPacket&, const uint32_t *, const uint32_t *,
 		     TPGBEDataformat::UnpackerOutputStreamPair&, TPGBEDataformat::UnpackerOutputStreamPair&,
-		     std::vector<uint64_t>&, std::vector<uint64_t>&, std::vector<uint64_t>&);
+		     std::vector<uint64_t>&, std::vector<uint64_t>&, std::vector<uint64_t>&, l1thgcfirmware::HGCalTriggerCellSACollection, l1thgcfirmware::HGCalTriggerCellSACollection);
 		     //std::map<uint64_t,std::vector<std::pair<uint32_t,TPGFEDataformat::HalfHgcrocData>>>&);
   
   TFile *fout = new TFile(Form("Diff_Relay-%u.root",relayNumber), "recreate");
@@ -320,6 +391,12 @@ int main(int argc, char** argv)
   //===============================================================================================================================
   
   //===============================================================================================================================
+  //Set mapping info for TC processor bins
+  //===============================================================================================================================
+  l1thgcfirmware::HGCalLayer1PhiOrderFwConfig theConfiguration_;
+  theConfiguration_.configureSeptemberTestBeamMappingInfo();
+  //===============================================================================================================================
+  //===============================================================================================================================
   //Set refernce eventlist
   //===============================================================================================================================
   /*TcTp2 events */ uint64_t refEvt[50] = {66235, 127532, 145302, 151731, 194816, 260756, 269698, 383736, 391481, 397781, 471496, 534349, 605680, 613325, 694404, 873524, 919213, 1085378, 1124673, 1164106, 1222670, 1247896, 1278016, 1322821, 1453497, 1486909, 1533310, 1623036, 1661345, 1763515, 1769677, 1809836, 1829961, 1871023, 1932945, 1967257, 1968826, 1981516, 1984675, 2043998, 2060794, 2068723, 2165732, 2172380, 2237980, 2245408, 2259447, 2390648, 2462559, 2514946};
@@ -337,7 +414,7 @@ int main(int argc, char** argv)
   
   std::vector<uint64_t> refEvents;
   //for(int ievent=0;ievent<1020;ievent++) refEvents.push_back(refEvt[ievent]);
-  for(int ievent=0;ievent<50;ievent++) refEvents.push_back(refEvt[ievent]);
+  for(int ievent=0;ievent<50;ievent++) refEvents.push_back(refEvt[ievent]); 
   //refEvents.resize(0);
   //===============================================================================================================================
   
@@ -359,7 +436,8 @@ int main(int argc, char** argv)
   
   uint64_t minEventDAQ, maxEventDAQ;  
   //const long double maxEvent = 1000000 ;
-  const long double maxEvent = 2557415 ;     //relay:1726581356
+  const long double maxEvent = 2557415 ;     //relay:1726581356 
+  //const long double maxEvent = 10000;
   //const long double maxEvent = 528447 ;         //relay:1727211141
   long double nloopEvent =  100000;
   //const long double maxEvent = 1000  ; //1722870998:24628, 1722871979:31599
@@ -384,7 +462,7 @@ int main(int argc, char** argv)
     if(relayNumber>=1727211141) econTReader.setNofCAFESep(14);
     econTReader.init(relayNumber,runNumber,0);
     std::cout<<"TRIG Before Link "<<trig_linkNumber<<", size : " << econtarray.size() <<std::endl;
-    econTReader.getEvents(refEvents, minEventDAQ, maxEventDAQ, econtarray);
+    econTReader.getEvents(relayNumber, refEvents, minEventDAQ, maxEventDAQ, econtarray); //Need to pass relay number to avoid reading out blocks that are missing in early runs
     std::cout<<"TRIG After Link "<<trig_linkNumber<<", size : " << econtarray.size() <<std::endl;
     econTReader.terminate();
     
@@ -399,6 +477,8 @@ int main(int argc, char** argv)
     //   std::cout << "Event: " << ievent << ", ECONT: " << econtarray.at(ievent).size() << ", ROC: "<< hrocarray.at(ievent).size() << std::endl;
     // }
     // continue;
+
+
     
     for(uint64_t ievt = 0 ; ievt < eventList.size(); ievt++ ){
       uint64_t ievent = eventList[ievt] ;
@@ -444,7 +524,9 @@ int main(int argc, char** argv)
       bool eventCondn = (refEvents.size()==0) ? (ievt<10) : (ievt<refEvents.size());
       if( eventCondn or event%100000==0)
 	std::cout<<std::endl<<std::endl<<"=========================================================================="<<std::endl<<"Processing event: " << event <<std::endl<<std::endl<<std::endl;
-      
+  
+  std::map<uint32_t,std::vector<std::pair<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection>>> triggerCellsFromTriggerData;
+
       for(int ilink=0;ilink<2;ilink++){
 	for(int iecond=0;iecond<3;iecond++){
 	  uint32_t moduleId = pck.packModId(zside, sector, ilink, det, iecond, selTC4, module); //we assume same ECONT and ECOND number for a given module
@@ -535,12 +617,19 @@ int main(int argc, char** argv)
 	  
 	  TPGBEDataformat::UnpackerOutputStreamPair upemul,up1;
 	  TPGFEDataformat::TcRawDataPacket vTC1;	
+    std::vector<TPGBEDataformat::UnpackerOutputStreamPair> theOutputStreams;
+    l1thgcfirmware::HGCalTriggerCellSACollection theTCsFromOS;
+    l1thgcfirmware::HGCalTriggerCellSACollection tcs_out_SA; //output from elink data
+    l1thgcfirmware::HGCalTriggerCellSACollection tcs_out_tcproc_TB; //trigger cell output from tc processor in testbeam
+    l1thgcfirmware::HGCalLayer1PhiOrderFwImpl theAlgo_;
     	  int refbx = -1;
 	  TPGBEDataformat::Trig24Data trdata;
 	  int tpg_m3_bxid = -1, tpg_p3_bxid = -1; 
 	  for(const auto& econtit : econtdata){
 	    if(econtit.first!=moduleId) continue;
 	    trdata = econtit.second ;
+      if(ilink==0 && iecond==0 && relayNumber>1727211141) triggerCellsFromTriggerData = createTCsFromTriggerData(trdata);
+
 	    if(eventCondn) std::cout << "event: " << event << ", moduleId : " << econtit.first << std::endl;
 	    //if(eventCondn and iecond==0 and ilink==0) TcRawdata.second.print();
 	    bool hasMatched = false;
@@ -567,11 +656,48 @@ int main(int argc, char** argv)
 		if(eventCondn and iecond==2 and ilink==1) TPGStage1Emulation::Stage1IO::convertElinksToTcRawData(TPGFEDataformat::STC4A, 6, el, vTC1);
 	      }
 	      if(eventCondn) TPGStage1Emulation::Stage1IO::convertTcRawDataToUnpackerOutputStreamPair(bx_2, vTC1, up1);
-	      //if(eventCondn) vTC1.print();
-	      // if(eventCondn) up1.print();
+        if(eventCondn) vTC1.print();
+        if(eventCondn) up1.setModuleId(moduleId);
+	      if(eventCondn) up1.print();
+
+        if(eventCondn && relayNumber > 1727211141 ){
+            theOutputStreams.resize(0);
+
+            theOutputStreams.push_back(up1);//Always a single UnpackerOutputStreamPair, vector only for generality
+
+            //Convert unpacker output to standalone HGCal trigger cells
+            theTCsFromOS.resize(0);
+            theTCsFromOS = convertOSPToTCs(theOutputStreams);
+
+            //Run TC processor emulator
+            tcs_out_SA.resize(0);
+            unsigned error_code = theAlgo_.run(theTCsFromOS, theConfiguration_, tcs_out_SA);
+
+            tcs_out_tcproc_TB.resize(0);
+            bool isDataTCsAssigned=false;
+            for (auto &obj : triggerCellsFromTriggerData[ibx]){
+              if(obj.first==moduleId) tcs_out_tcproc_TB=obj.second; isDataTCsAssigned=true;
+            }
+
+            if(isDataTCsAssigned){//Only try to do comparison if we have read out TB data since some modules are missing
+              bool diffTCs=hasDifferentTCs(tcs_out_SA,tcs_out_tcproc_TB);
+
+              if(eventCondn or diffTCs){
+                std::cout<<"Printing TCs with column, channel, frame mapping - after TCprocEmul, from ECON-T elink input"<<std::endl;
+                for (auto& tcobj : tcs_out_SA){
+                  std::cout<<"Mod ID "<<tcobj.moduleId()<<" address "<<tcobj.phi()<<" energy "<<tcobj.energy()<<" col "<<tcobj.column()<<" chn "<<tcobj.channel()<<" frame "<<tcobj.frame()<<std::endl;
+                }
+
+                std::cout<<"Printing TCs with column, channel, frame mapping - as read out from TB data"<<std::endl;
+                for (auto& tcobj : tcs_out_tcproc_TB){
+                  std::cout<<"Mod ID "<<tcobj.moduleId()<<" address "<<tcobj.phi()<<" energy "<<tcobj.energy()<<" col "<<tcobj.column()<<" chn "<<tcobj.channel()<<" frame "<<tcobj.frame()<<std::endl;
+                }
+              }
+           }
+        }
 	      if(hasMatched) break;
 	    }//bx loop
-	    //if(eventCondn) trdata.print();
+	    //if(eventCondn) trdata.print(); 
 	    //if(hasMatched) break;
 	  }//loop over econt data for a given run
 	  if(refbx==-1){
@@ -579,7 +705,7 @@ int main(int argc, char** argv)
 	    if(std::find(shiftedBxEvent.begin(),shiftedBxEvent.end(),event) == shiftedBxEvent.end()) shiftedBxEvent.push_back(event);
 	    econt_slink_bx = trdata.getSlinkBx();
 	    FillHistogram(false, false, dir_diff, relayNumber, event, econt_slink_bx, econTPar[moduleId].getNElinks(), 0x0, elinkemul, ilink, iecond, vTC1, TcRawdata.second, 0x0, 0x0, up1, upemul,
-			  unExEmulTC, unExDataTC, elStg1Event);
+			  unExEmulTC, unExDataTC, elStg1Event,tcs_out_SA,tcs_out_tcproc_TB);
 			  //hrocarray);
 	    delete []elinkemul;
 	    std::cout<<std::endl<<std::endl<<"=========================================================================="<<std::endl<<"Skipping event: " << event <<std::endl<<std::endl<<std::endl;
@@ -621,10 +747,49 @@ int main(int argc, char** argv)
 	  //if(printCondn) modTcdata.second.print();
 	  if(printCondn) TcRawdata.second.print();
 	  if(printCondn) vTC1.print();
-          // if(printCondn) up1.print();
+    up1.setModuleId(moduleId);
+    // if(printCondn) up1.print();
+    upemul.setModuleId(moduleId);
 	  // if(printCondn) upemul.print();
 	  // if(printCondn) trdata.print();
 	  // 
+
+    if (relayNumber > 1727211141){
+      theOutputStreams.resize(0);
+  
+      theOutputStreams.push_back(up1);//Always a single UnpackerOutputStreamPair, vector only for generality
+  
+      //Convert unpacker output to standalone HGCal trigger cells
+      theTCsFromOS.resize(0);
+      theTCsFromOS = convertOSPToTCs(theOutputStreams);
+  
+  
+      //Run TC processor emulator
+      tcs_out_SA.resize(0);
+      unsigned error_code = theAlgo_.run(theTCsFromOS, theConfiguration_, tcs_out_SA);
+  
+      tcs_out_tcproc_TB.resize(0);
+      bool isDataTCsAssigned=false;
+      for (auto &obj : triggerCellsFromTriggerData[refbx]){
+        if(obj.first==moduleId) tcs_out_tcproc_TB=obj.second; isDataTCsAssigned=true;
+      }
+      if(isDataTCsAssigned){
+        bool diffTCs=hasDifferentTCs(tcs_out_SA,tcs_out_tcproc_TB);
+  
+        if(diffTCs){
+          std::cout<<"Printing TCs with column, channel, frame mapping - after TCprocEmul, from ECON-T elink input"<<std::endl;
+          for (auto& tcobj : tcs_out_SA){
+            std::cout<<"Mod ID "<<tcobj.moduleId()<<" address "<<tcobj.phi()<<" energy "<<tcobj.energy()<<" col "<<tcobj.column()<<" chn "<<tcobj.channel()<<" frame "<<tcobj.frame()<<std::endl;
+          }
+  
+          std::cout<<"Printing TCs with column, channel, frame mapping - reading out from testbeam data"<<std::endl;
+          for (auto& tcobj : tcs_out_tcproc_TB){
+            std::cout<<"Mod ID "<<tcobj.moduleId()<<" address "<<tcobj.phi()<<" energy "<<tcobj.energy()<<" col "<<tcobj.column()<<" chn "<<tcobj.channel()<<" frame "<<tcobj.frame()<<std::endl;
+          }
+        }
+      }
+    }
+
 	  for(uint32_t iel=0;iel<econTPar[moduleId].getNElinks();iel++){
 	    if(printCondn) std::cout<<"Elink emul : 0x" << std::hex << std::setfill('0') << std::setw(8) << elinkemul[iel] << std::dec ;
 	    if(printCondn) std::cout<<"\t Elink data : 0x" << std::hex << std::setfill('0') << std::setw(8) << eldata[iel] << std::dec ;//<< std::endl;
@@ -643,7 +808,7 @@ int main(int argc, char** argv)
 	  //   if(printCondn) std::cout<<"\t Diff: " << std::setfill(' ') << std::setw(10) << diff  << ", XOR: " << std::bitset<32>{XOR} << std::dec << std::endl;
 	  //   }	    
 	  FillHistogram(true, isLargeDiff, dir_diff, relayNumber, event, econt_slink_bx, econTPar[moduleId].getNElinks(), eldata, elinkemul, ilink, iecond, vTC1, TcRawdata.second, unpkWords, unpkWords1, up1, upemul,
-			unExEmulTC, unExDataTC, elStg1Event);//, hrocarray);	  
+			unExEmulTC, unExDataTC, elStg1Event,tcs_out_SA,tcs_out_tcproc_TB);//, hrocarray);	  
 	  delete []elinkemul;
 	  // delete []unpkMsTc;
 	}//econd loop
@@ -759,6 +924,16 @@ void BookHistograms(TDirectory*& dir_diff, uint32_t relay){
   hUWord_3->GetXaxis()->SetTitle("Difference in (ECONT - Emulator)");
   hUWord_3->GetYaxis()->SetTitle("Entries");
   hUWord_3->SetDirectory(dir_diff);
+
+  TH1D *hTCProcDiff_size = new TH1D("hTCProcDiff_size", Form("TC processor difference in output size for Relay: %u", relay),51,-25.5,25.5);
+  hTCProcDiff_size->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator");
+  hTCProcDiff_size->GetYaxis()->SetTitle("Entries");
+  hTCProcDiff_size->SetDirectory(dir_diff);
+
+  TH1D *hTCProcDiff_quantities = new TH1D("hTCProcDiff_quantities", Form("TC processor difference in output quantities for Relay: %u", relay),52,-0.5,25.5);
+  hTCProcDiff_quantities->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator");
+  hTCProcDiff_quantities->GetYaxis()->SetTitle("Entries");
+  hTCProcDiff_quantities->SetDirectory(dir_diff);
 
   TH1D *hElDiff[4][2][3]; //2 modes(tctp==any or 1), 2 lpGBTs, 3 modules in each lpGBT
   TH1D *hUnpkWordDiff[4][2][3][11]; //2 modes(tctp==any or 1), 2 lpGBTs, 3 modules in each lpGBT 8 words max
@@ -974,7 +1149,7 @@ void FillHistogram(bool matchFound, bool isLargeDiff, TDirectory*& dir_diff, uin
 		   TPGFEDataformat::TcRawDataPacket& tcdata, TPGFEDataformat::TcRawDataPacket& tcemul,
 		   const uint32_t *unpkWords, const uint32_t *unpkWords1,
 		   TPGBEDataformat::UnpackerOutputStreamPair& updata, TPGBEDataformat::UnpackerOutputStreamPair& upemul,
-		   std::vector<uint64_t>& unExEmulTC, std::vector<uint64_t>& unExDataTC, std::vector<uint64_t>& elStg1Event){
+		   std::vector<uint64_t>& unExEmulTC, std::vector<uint64_t>& unExDataTC, std::vector<uint64_t>& elStg1Event, l1thgcfirmware::HGCalTriggerCellSACollection tcProcEmulator, l1thgcfirmware::HGCalTriggerCellSACollection tcProcTB){
   //std::map<uint64_t,std::vector<std::pair<uint32_t,TPGFEDataformat::HalfHgcrocData>>>& hrocarray){
   
   uint32_t IdealE[2][3][10] = { //nof lpGBTs, nofModules, nofTC/STCs
@@ -1065,6 +1240,13 @@ void FillHistogram(bool matchFound, bool isLargeDiff, TDirectory*& dir_diff, uin
     if(hasDiffEmul) {
       ((TH2D *) list->FindObject("hNZEmulModules"))->Fill( ilp, imdl );
       if(std::find(unExEmulTC.begin(),unExEmulTC.end(),event) == unExEmulTC.end() and relayNumber==1726581356) unExEmulTC.push_back(event);
+    }
+    int theTCListSizeDiff = tcProcEmulator.size()-tcProcTB.size();
+    ((TH1D *) list->FindObject("hTCProcDiff_size"))->Fill(theTCListSizeDiff);
+    unsigned theSizeToTest = std::min(tcProcEmulator.size(),tcProcTB.size());
+    for(unsigned i=0; i<theSizeToTest; i++){
+      unsigned diffsize = std::abs(int(tcProcEmulator.at(i).energy()-tcProcTB.at(i).energy()))+std::abs(int(tcProcEmulator.at(i).phi()-tcProcTB.at(i).phi()))+std::abs(int(tcProcEmulator.at(i).channel()-tcProcTB.at(i).channel()))+std::abs(int(tcProcEmulator.at(i).frame()-tcProcTB.at(i).frame()))+std::abs(int(tcProcEmulator.at(i).column()-tcProcTB.at(i).column()));
+      ((TH1D *) list->FindObject("hTCProcDiff_quantities"))->Fill(diffsize);
     }
     
     if(imode==0 and imdl==0 and ilp==0){
