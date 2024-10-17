@@ -1248,20 +1248,18 @@ namespace TPGFEReader{
     		uint32_t col3 = p64[itc] & 0x7FFF ;
     		if(tcprocIndx>=tcprocBgnOffset and (tcprocIndx-tcprocBgnOffset)%8==0) itcprocout=0;
     	    if(tcprocIndx>=tcprocBgnOffset){
-    		  if(itcprocout==0) {//Module 4, bins 1+2 (2TC/each)
+    		  if(itcprocout==0) {//Module 4, bins 1-4
     	        tcprocOutput[0][ibx][4][0][0] = col3; 
-    	        tcprocOutput[0][ibx][4][0][1] = col2; 
-    	        tcprocOutput[0][ibx][4][1][0] = col1; 
-    	        tcprocOutput[0][ibx][4][1][1] = col0; 
-    		  } else if(itcprocout==1){//Module 0, bins 3-6
-    			tcprocOutput[0][ibx][4][2][0] = col3; 
-    	        tcprocOutput[0][ibx][4][3][0] = col2; 
-    	        tcprocOutput[0][ibx][4][4][0] = col1; 
-    	        tcprocOutput[0][ibx][4][5][0] = col0; 
-    		  } else if(itcprocout==2){//Module 0, bins 7-9
-    			tcprocOutput[0][ibx][4][6][0] = col3; 
-    	        tcprocOutput[0][ibx][4][7][0] = col2; 
-    	        tcprocOutput[0][ibx][4][8][0] = col1; 
+    	        tcprocOutput[0][ibx][4][1][1] = col2; 
+    	        tcprocOutput[0][ibx][4][2][0] = col1; 
+    	        tcprocOutput[0][ibx][4][3][1] = col0; 
+    		  } else if(itcprocout==1){//Module 0, bins 5-8
+    			tcprocOutput[0][ibx][4][4][0] = col3; 
+    	        tcprocOutput[0][ibx][4][5][0] = col2; 
+    	        tcprocOutput[0][ibx][4][6][0] = col1; 
+    	        tcprocOutput[0][ibx][4][7][0] = col0; 
+    		  } else if(itcprocout==2){//Module 0, bins 9
+    			tcprocOutput[0][ibx][4][8][0] = col3; 
     		  }
     	      itcprocout++;
     	    }	 
