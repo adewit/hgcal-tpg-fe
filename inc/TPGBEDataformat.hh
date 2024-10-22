@@ -491,6 +491,100 @@ private:
     uint32_t moduleInformation[7][5][9][2]; //7:bxs, 5:mods, 9: bins, 2:instances
   };
 
+  class TrigTCProcData{
+    public:
+      TrigTCProcData() : nofElinks(0){nofUnpkdWords[0] = 0; nofUnpkdWords[1] = 0;}
+      void initUnpkWords(){for (uint32_t ib=0;ib<7;ib++) for (uint32_t ibin=0;ibin<9;ibin++) for (uint32_t iinst=0;iinst<2;iinst++) unpackedWords[ib][ibin][iinst]=0;}
+      void setUnpkWord(uint32_t ib, uint32_t ibin, uint32_t iinst, uint32_t val) { assert(ib<7) ; assert(ibin<9); assert(iinst<2); unpackedWords[ib][ibin][iinst] = val;}
+      int  getUnpkWord(uint32_t ib, uint32_t ibin, uint32_t iinst) const { return unpkWordIsValid(ib,ibin,iinst)? unpackedWords[ib][ibin][iinst] : -1;}
+      bool unpkWordIsValid(uint32_t ib, uint32_t ibin, uint32_t iinst) const {
+        if((unpackedWords[ib][ibin][iinst]&0x7FFF)!=0){ 
+          std::cout<<"unpacked word is valid "<<std::endl;
+          return true; 
+        }
+        else if(((unpackedWords[ib][ibin][iinst]&0x7FFF)==0) && ibin==0 && iinst==0 && ((unpackedWords[ib][ibin+1][iinst]&0x7FFF)!=0 || (unpackedWords[ib][ibin][iinst+1]&0x7FFF)!=0)){
+          return true;
+        }
+        else{
+          std::cout<<"is next bin filled "<<((unpackedWords[ib][ibin+1][iinst]&0x7FFF)!=0)<<std::endl;
+          std::cout<<" this value is "<<unpackedWords[ib][ibin][iinst]<<" and the next bin's value is "<<(unpackedWords[ib][ibin+1][iinst]&0x7FFF)<<" and the next instances value is "<<(unpackedWords[ib][ibin][iinst+1]&0x7FFF)<<std::endl;
+          return false;
+        }
+      }
+      int getTDAQEntry(int ilp, int iecon) {
+        if (ilp==0) return 0;//first lpGBT link: all 3 ECON-Ts in first TDAQ block
+        else if (ilp==1&&iecon<2) return iecon; //second lpGBT link: first ECON-T is in first TDAQ block, second ECON-T in 2nd TDAQ block; third ECON-T not read out
+        else if(ilp==2) return 2; //third lpGBT link: all 3 ECON-Ts in the third TDAQ block
+        else if (ilp==3&&iecon<2) return iecon+2; //fourth lpGBT link: first ECON-T is in the third TDAQ block, second ECON-T is in the last TDAQ block; third ECON-T is not read out
+        else return -1;
+      }
+      std::pair<int, int> getWordRange(int ilp, int iecon) {
+        if ( (ilp==0||ilp==2) && iecon==0) return std::make_pair(0,3); //first, third lpGBT link, first ECON-T: start at word 0 and contains 3 words
+        else if( (ilp==0||ilp==2) && (iecon==1||iecon==2)) return std::make_pair(iecon+2,1);//first lpGBT link, 2nd and 3d ECON-T: start at word ECON-T+2, contains 1 word
+        else if( (ilp==1 ||ilp==3) && iecon==0) return std::make_pair(5,3); //second lpGBT link, first ECON-T: start at word 5 and contains 3 words
+        else if( (ilp==1||ilp==3) && iecon==1) return std::make_pair(0,3); //second lpGBT link, second ECON-T, start at word 0 and contains 3 words
+        else return std::make_pair(-1,-1);
+      }
+      std::map<int, std::vector<std::pair<int, int>>> getWordAndColPerBin(int ilp, int iecon ) {//
+        std::map<int, std::vector<std::pair<int, int>>> theTmpMap;
+        std::vector<std::pair<int,int>> theTmpVec;
+        if ( (ilp==0||ilp==2) && iecon==0) {
+          theTmpMap.clear();
+          for(int ibin =0 ; ibin <9 ; ibin++){
+            theTmpVec.resize(0);
+            if(ibin==0){
+              theTmpVec.push_back(std::make_pair(0,0));
+              theTmpVec.push_back(std::make_pair(0,1));
+            } else if (ibin==1) {
+              theTmpVec.push_back(std::make_pair(0,2));
+              theTmpVec.push_back(std::make_pair(0,3));
+            } else {
+              theTmpVec.push_back(std::make_pair(std::floor((ibin-2)/4)+1,(ibin-2)%4));
+            }
+            theTmpMap[ibin] = theTmpVec;
+          }
+        } else if((ilp==0 || ilp==2) &&iecon<3) {
+          theTmpMap.clear();
+          for(int ibin=0;ibin<4;ibin++){
+            theTmpVec.resize(0);
+            theTmpVec.push_back(std::make_pair(iecon+2,ibin)); //2nd and 3d module have 4 bins, one entry each
+            theTmpMap[ibin] = theTmpVec;
+          }
+        } else if((ilp==1 || ilp==3) && iecon ==0){
+          theTmpMap.clear();
+          for(int ibin=0; ibin < 9 ; ibin++){
+            theTmpVec.resize(0);
+            if(ibin==0){
+              theTmpVec.push_back(std::make_pair(5,0));
+              theTmpVec.push_back(std::make_pair(5,1));
+            } else if (ibin==1){
+              theTmpVec.push_back(std::make_pair(5,2));
+              theTmpVec.push_back(std::make_pair(5,3));
+            } else {
+              theTmpVec.push_back(std::make_pair(std::floor((ibin-2)/4)+6,(ibin-2)%4));
+            }
+            theTmpMap[ibin] = theTmpVec;
+          }
+        } else if ((ilp==1 || ilp==3) && iecon ==1){
+          theTmpMap.clear();
+          for(int ibin=0; ibin<9;ibin++){
+            theTmpVec.resize(0);
+            theTmpVec.push_back(std::make_pair(std::floor(ibin/4),ibin%4));
+            theTmpMap[ibin] = theTmpVec;
+          }
+        }
+        return theTmpMap;
+      }
+
+
+  
+  
+  private:
+    uint8_t nofElinks, nofUnpkdWords[2];
+    uint16_t bxId ; //from Slink trailer
+    uint32_t unpackedWords[7][9][2]; //7:bxs,9:bins,2:instances 
+  };
+
 }
 
 #endif

@@ -568,7 +568,7 @@ namespace TPGFEReader{
     void setNofCAFESep(int maxsep) { maxCAFESeps = maxsep;}
     void init(uint32_t, uint32_t, uint32_t);
         
-    void getEvents(uint32_t relayNumber, std::vector<uint64_t>& refEvents, uint64_t& minEventTrig, uint64_t& maxEventTrig, std::map<uint64_t,std::vector<std::pair<uint32_t,TPGBEDataformat::Trig24Data>>>& econtarray);
+    void getEvents(uint32_t relayNumber, std::vector<uint64_t>& refEvents, uint64_t& minEventTrig, uint64_t& maxEventTrig, std::map<uint64_t,std::vector<std::pair<uint32_t,TPGBEDataformat::Trig24Data>>>& econtarray, std::map<uint64_t, std::vector<std::pair<uint32_t,TPGBEDataformat::TrigTCProcData>>>& tcprocarray);
     void terminate();
     
   private:
@@ -783,7 +783,7 @@ namespace TPGFEReader{
   }
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
-  void ECONTReader::getEvents(uint32_t relayNumber, std::vector<uint64_t>& refEvents, uint64_t& minEventTrig, uint64_t& maxEventTrig, std::map<uint64_t,std::vector<std::pair<uint32_t,TPGBEDataformat::Trig24Data>>>& econtarray){
+  void ECONTReader::getEvents(uint32_t relayNumber, std::vector<uint64_t>& refEvents, uint64_t& minEventTrig, uint64_t& maxEventTrig, std::map<uint64_t,std::vector<std::pair<uint32_t,TPGBEDataformat::Trig24Data>>>& econtarray, std::map<uint64_t, std::vector<std::pair<uint32_t,TPGBEDataformat::TrigTCProcData>>>& tcprocarray){
 
     //Set up specific records to interpet the formats
     const Hgcal10gLinkReceiver::RecordStarting *rStart((Hgcal10gLinkReceiver::RecordStarting*)r);
@@ -1086,6 +1086,66 @@ namespace TPGFEReader{
 	    if(unpkIndx>0 and (unpkIndx-unpkBgnOffset)%8==0) ibx++;
 	  }
 
+//////////// TC proc block 10-13  /////////////////////
+	  uint32_t TCProcWord[4][4][7][8]; //4:TDAQs, 4:columns, 7:bxs, 8:words
+	  for(int iblk=12;iblk<=13;iblk++){ //we start with 12/13 as it corresponds to LD1/2 trains
+	    unpkIndx = 0;
+	    iunpkw = 0;
+	    ibx = 0;
+	    int itdaq = (iblk==12)?0:1 ; //0 and 1 for TDAQ 12/13
+	    for(int iw = loc[iblk]+1; iw <= (loc[iblk]+size[iblk]) ; iw++ ){
+	      uint32_t col0 = (p64[iw] >> (32+16)) & 0xFFFF ;
+	      uint32_t col1 = (p64[iw] >> 32) & 0xFFFF ;
+	      uint32_t col2 = (p64[iw] >> (32-16)) & 0xFFFF ;
+	      uint32_t col3 = p64[iw] & 0xFFFF ;
+	      TCProcWord[itdaq][0][ibx][iunpkw] = col3; //0-15 bits
+	      TCProcWord[itdaq][1][ibx][iunpkw] = col2; //16-31 bits
+	      TCProcWord[itdaq][2][ibx][iunpkw] = col1; //32-47 bits
+	      TCProcWord[itdaq][3][ibx][iunpkw] = col0; //48-63 bits
+	      iunpkw++;
+	      if((nEvents < nShowEvents) or (scanMode and boe->eventId()==inspectEvent))
+		std::cout<<"iblock: " << iblk <<", iloc: "<< iw 
+			 << std::hex
+			 <<", col0 : 0x" << std::setfill('0') << std::setw(4) << col0 <<", "
+			 <<", col1 : 0x" << std::setfill('0') << std::setw(4) << col1 <<", "
+			 <<", col2 : 0x" << std::setfill('0') << std::setw(4) << col2 <<", "
+			 <<", col3 : 0x" << std::setfill('0') << std::setw(4) << col3 <<", "
+			 << std::dec << std::setfill(' ')
+			 << std::endl;		
+	      unpkIndx++;
+	      if(unpkIndx%8==0) {ibx++; iunpkw=0;}
+	    }//loop over words for 7 bxs
+	  }//loop over TC proc TDAQ blocks
+	  
+	  for(int iblk=10;iblk<=11;iblk++){ //Next we read 10/11 as it corresponds to LD3/MB1 trains
+	    unpkIndx = 0;
+	    iunpkw = 0;
+	    ibx = 0;
+	    int itdaq = (iblk==10)?2:3 ; //2 and 3 for TDAQ 10/11
+	    for(int iw = loc[iblk]+1; iw <= (loc[iblk]+size[iblk]) ; iw++ ){
+	      uint32_t col0 = (p64[iw] >> (32+16)) & 0xFFFF ;
+	      uint32_t col1 = (p64[iw] >> 32) & 0xFFFF ;
+	      uint32_t col2 = (p64[iw] >> (32-16)) & 0xFFFF ;
+	      uint32_t col3 = p64[iw] & 0xFFFF ;
+	      TCProcWord[itdaq][0][ibx][iunpkw] = col3; //0-15 bits
+	      TCProcWord[itdaq][1][ibx][iunpkw] = col2; //16-31 bits
+	      TCProcWord[itdaq][2][ibx][iunpkw] = col1; //32-47 bits
+	      TCProcWord[itdaq][3][ibx][iunpkw] = col0; //48-63 bits
+	      iunpkw++;
+	      if((nEvents < nShowEvents) or (scanMode and boe->eventId()==inspectEvent))
+		std::cout<<"iblock: " << iblk <<", iloc: "<< iw 
+			 << std::hex
+			 <<", col0 : 0x" << std::setfill('0') << std::setw(4) << col0 <<", "
+			 <<", col1 : 0x" << std::setfill('0') << std::setw(4) << col1 <<", "
+			 <<", col2 : 0x" << std::setfill('0') << std::setw(4) << col2 <<", "
+			 <<", col3 : 0x" << std::setfill('0') << std::setw(4) << col3 <<", "
+			 << std::dec << std::setfill(' ')
+			 << std::endl;		
+	      unpkIndx++;
+	      if(unpkIndx%8==0) {ibx++; iunpkw=0;}
+	    }//loop over words for 7 bxs
+	  }//loop over TC proc TDAQ blocks
+
 	  uint32_t tcprocOutput[2][7][9][9][2]; //2: lpGBTs, 7:bxs, 5: modules, 9:bins, 2:tcs. Create this outside of the if statement
       if (relayNumber>=1727211141){
 	      iblock = 10;
@@ -1284,6 +1344,11 @@ namespace TPGFEReader{
 	  TPGBEDataformat::Trig24Data trdata[2][3]; //2:lpGBTs, 3:econts
 	  for(int ilp=0;ilp<2;ilp++){
 	    for(int iecon=0;iecon<3;iecon++){
+		  std::cout<<"module "<<module<<std::endl;
+		  std::cout<<"det "<<det<<std::endl;
+		  std::cout<<"zside "<<zside<<std::endl;
+		  std::cout<<"sector "<<sector<<std::endl;
+		  std::cout<<"selTC4 "<<selTC4<<std::endl;
 	      moduleId = pck.packModId(zside, sector, ilp, det, iecon, selTC4, module);
 	      trdata[ilp][iecon].setNofElinks( ((iecon==0)?3:2) );
 	      trdata[ilp][iecon].setNofUnpkWords(8);
@@ -1313,6 +1378,41 @@ namespace TPGFEReader{
 	      econtarray[eventId].push_back( std::make_pair(moduleId,trdata[ilp][iecon]) );
 	    }//nof ECONTs
 	  }//nof lpGBTs
+
+
+	  ///////////////////// Fill tcprocarray ///////////////////////
+	  TPGBEDataformat::TrigTCProcData tcprocdata[4][3]; //4:lpGBT, 3:econT
+	  for(int ilp=0;ilp<4;ilp++){
+	    for(int iecon=0;iecon<3;iecon++){
+		  std::cout<<"HELLO"<<std::endl;
+		  tcprocdata[ilp][iecon].initUnpkWords();//Initialize all entries to 0.
+	      moduleId = pck.packModId(zside, sector, ilp, det, iecon, selTC4, module);//ilp needs to be a LINK not an lpGBT. icol needs to be the ECON-T
+		  //Need to translate between lpGBT-ID, iecon, and the link/column
+	      //tcprocdata[ilp][icol].setNofElinks(0);
+	      //tcprocdata[ilp][icol].setNofUnpkWords(8);
+		  int theTDAQEntry = tcprocdata[ilp][iecon].getTDAQEntry(ilp,iecon);
+		  //std::pair(int,int) theWordRange = tcprocdata[ilp][iecon].getWordRange(ilp,iecon);
+
+		  std::map<int, std::vector<std::pair<int, int>>> theWordAndColPerBin = tcprocdata[ilp][iecon].getWordAndColPerBin(ilp,iecon);
+
+
+
+	     for(uint32_t ib=0;ib<7;ib++){
+		  for(uint32_t ibin=0;ibin<theWordAndColPerBin.size();ibin++){ //Here need to loop over the number of bins in theWordAndColPerBin, check the length of the vector for each bin, if len more than one, assign the second entry to instance 2, otherwise to instance 1, and pick up the word from TCProcWord that is indicated by the indices. The rest of this function still needs to be developed
+		      int iinst=0;
+			  for(const auto& thePair : theWordAndColPerBin[ibin]){
+			      tcprocdata[ilp][iecon].setUnpkWord(ib, ibin, iinst, (TCProcWord[theTDAQEntry][thePair.second][ib][thePair.first]&0x7FFF)) ;
+				  std::cout<<"for module "<<moduleId<<std::endl;
+				  std::cout<<"setting unpacked word ib, ibin, iinst, val "<<ib <<" , "<<ibin<<" , "<<iinst<<" , "<<(TCProcWord[ilp][thePair.second][ib][thePair.first]&0x7FFF)<<std::endl;
+				  iinst++;
+			  }
+		  }
+	    }//nof bxs
+	      //tcprocdata[ilp][iecon].setSlinkBx(eoe->bxId());
+	      tcprocarray[eventId].push_back( std::make_pair(moduleId,tcprocdata[ilp][iecon]) );
+	    }//nof ECONTs
+	  }//nof lpGBTs
+	  ///////////////////////////////////////////////////////////////
 	  
 	}//MinMaxEvent
 	if((nEvents < nShowEvents) or (scanMode and boe->eventId()==inspectEvent)) std::cout<<"========= End of event : "<< nEvents << "============="<<  std::endl;

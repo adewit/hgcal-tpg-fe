@@ -66,39 +66,42 @@ bool hasDifferentTCs(l1thgcfirmware::HGCalTriggerCellSACollection tcOrig, l1thgc
    return false;
 }
 
-std::map<uint32_t,std::vector<std::pair<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection>>> createTCsFromTriggerData(TPGBEDataformat::Trig24Data trdata_){//ibx, module ID
-    std::map<uint32_t,std::vector<std::pair<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection>>> theTCsFromTriggerData_;
-    std::map<uint32_t,uint32_t> moduleIndicesToID;
+std::map<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection> createTCsFromTriggerData(uint32_t moduleId, TPGBEDataformat::TrigTCProcData tcdata_){//ibx, module ID
+    std::map<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection> theTCsFromTriggerData_;
+    /*std::map<uint32_t,uint32_t> moduleIndicesToID;
     moduleIndicesToID[0]=256;
     moduleIndicesToID[1]=768;
     moduleIndicesToID[2]=1280;
     moduleIndicesToID[3]=8448;
-    moduleIndicesToID[4]=8960;
+    moduleIndicesToID[4]=8960;*/
     for(int ibx=0;ibx<7;ibx++){
-      std::vector<std::pair<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection>> per_mod_vec_tcs;
-      for(int imod=0;imod<5;imod++){
-        l1thgcfirmware::HGCalTriggerCellSACollection tmp_tcs;
-        for(int ibin=0;ibin<9;ibin++){
-          for(int iinstance=0;iinstance<2;iinstance++){
-            if(trdata_.moduleInfoIsValid(ibx,imod,ibin,iinstance)){
-              uint32_t tcoutputword = trdata_.getModuleInformation(ibx,imod,ibin,iinstance);
+      //std::vector<std::pair<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection>> per_mod_vec_tcs;
+      l1thgcfirmware::HGCalTriggerCellSACollection tmp_tcs;
+      for(int ibin=0;ibin<9;ibin++){
+        for(int iinstance=0;iinstance<2;iinstance++){
+          int tcoutputword = tcdata_.getUnpkWord(ibx,ibin,iinstance);
+          std::cout<<"tcoutputword for bx, bin, instance is "<<ibx<<" , "<<ibin<<" , "<<iinstance<<" , "<<tcoutputword<<std::endl;
+          if(tcoutputword > -1){
+            std::cout<<"Yu"<<std::endl;
               //std::cout<<" ibx "<<ibx<<" module "<<imod<<" bin "<<ibin<<" instance "<<iinstance<<" :"<< std::endl;
               //std::cout<<"tcoutputword "<<tcoutputword<<std::endl;
-              uint32_t tcout_energy = tcoutputword&0x1FF;
-              uint32_t tcout_channel = (tcoutputword>>9)&0x3F;//3F after bit shift, otherwise you don't get the correct number
+            uint32_t tcout_energy = tcoutputword&0x1FF;
+            uint32_t tcout_channel = (tcoutputword>>9)&0x3F;//3F after bit shift, otherwise you don't get the correct number
               //std::cout<<" energy "<<std::dec<<tcout_energy<<std::endl;
               //std::cout<<" channel "<<std::dec<<tcout_channel<<std::endl;
-              tmp_tcs.emplace_back(1,1,0,tcout_channel,0,tcout_energy);
-              tmp_tcs.back().setColumn(ibin);
-              tmp_tcs.back().setChannel(0);
-              tmp_tcs.back().setFrame(0);
-              tmp_tcs.back().setModuleId(moduleIndicesToID[imod]);
-            }
+            tmp_tcs.emplace_back(1,1,0,tcout_channel,0,tcout_energy);
+            tmp_tcs.back().setColumn(ibin);
+            tmp_tcs.back().setChannel(0);
+            tmp_tcs.back().setFrame(0);
+            tmp_tcs.back().setModuleId(moduleId);
+            std::cout<<"size of tmptcs is now "<<tmp_tcs.size()<<std::endl;
           }
         }
-        per_mod_vec_tcs.push_back(std::make_pair(moduleIndicesToID[imod],tmp_tcs));
       }
-      theTCsFromTriggerData_[ibx]=per_mod_vec_tcs;
+      //per_mod_vec_tcs.push_back(tmp_tcs);
+      std::cout<<"size of tmp_tcs "<<tmp_tcs.size()<<std::endl;
+      theTCsFromTriggerData_[ibx]=tmp_tcs;
+      std::cout<<"size of theTCsFromTriggerData "<<theTCsFromTriggerData_[ibx].size()<<std::endl;
     }
   return theTCsFromTriggerData_;
 }
@@ -374,6 +377,7 @@ int main(int argc, char** argv)
   //output array
   //econTReader.checkEvent(1);
   std::map<uint64_t,std::vector<std::pair<uint32_t,TPGBEDataformat::Trig24Data>>> econtarray; //event,moduleId (from link)
+  std::map<uint64_t,std::vector<std::pair<uint32_t,TPGBEDataformat::TrigTCProcData>>> tcprocarray;
   // ===============================================================================================================================
   
   //===============================================================================================================================
@@ -457,12 +461,13 @@ int main(int argc, char** argv)
     hrocarray.clear();
     eventList.clear();
     econtarray.clear();
+    tcprocarray.clear();
     
     econTReader.setNofCAFESep(11);
     if(relayNumber>=1727211141) econTReader.setNofCAFESep(14);
     econTReader.init(relayNumber,runNumber,0);
     std::cout<<"TRIG Before Link "<<trig_linkNumber<<", size : " << econtarray.size() <<std::endl;
-    econTReader.getEvents(relayNumber, refEvents, minEventDAQ, maxEventDAQ, econtarray); //Need to pass relay number to avoid reading out blocks that are missing in early runs
+    econTReader.getEvents(relayNumber, refEvents, minEventDAQ, maxEventDAQ, econtarray,tcprocarray); //Need to pass relay number to avoid reading out blocks that are missing in early runs
     std::cout<<"TRIG After Link "<<trig_linkNumber<<", size : " << econtarray.size() <<std::endl;
     econTReader.terminate();
     
@@ -525,7 +530,7 @@ int main(int argc, char** argv)
       if( eventCondn or event%100000==0)
 	std::cout<<std::endl<<std::endl<<"=========================================================================="<<std::endl<<"Processing event: " << event <<std::endl<<std::endl<<std::endl;
   
-  std::map<uint32_t,std::vector<std::pair<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection>>> triggerCellsFromTriggerData;
+  std::map<uint32_t,l1thgcfirmware::HGCalTriggerCellSACollection> triggerCellsFromTriggerData;
 
       for(int ilink=0;ilink<2;ilink++){
 	for(int iecond=0;iecond<3;iecond++){
@@ -614,6 +619,7 @@ int main(int argc, char** argv)
 	  if(TcRawdata.second.isTcTp3() and (std::find(TcTp3TrigEvents.begin(),TcTp3TrigEvents.end(),event) == TcTp3TrigEvents.end())) TcTp3TrigEvents.push_back(event);
 	  
 	  std::vector<std::pair<uint32_t,TPGBEDataformat::Trig24Data>> econtdata =  econtarray[event];
+    std::vector<std::pair<uint32_t,TPGBEDataformat::TrigTCProcData>> tcprocdata = tcprocarray[event];
 	  
 	  TPGBEDataformat::UnpackerOutputStreamPair upemul,up1;
 	  TPGFEDataformat::TcRawDataPacket vTC1;	
@@ -624,13 +630,18 @@ int main(int argc, char** argv)
     l1thgcfirmware::HGCalLayer1PhiOrderFwImpl theAlgo_;
     	  int refbx = -1;
 	  TPGBEDataformat::Trig24Data trdata;
-	  int tpg_m3_bxid = -1, tpg_p3_bxid = -1; 
-	  for(const auto& econtit : econtdata){
-	    if(econtit.first!=moduleId) continue;
-	    trdata = econtit.second ;
-      if(ilink==0 && iecond==0 && relayNumber>1727211141) triggerCellsFromTriggerData = createTCsFromTriggerData(trdata);
+    TPGBEDataformat::TrigTCProcData tcdata;
+	  int tpg_m3_bxid = -1, tpg_p3_bxid = -1;
+    for(int i=0; i<econtdata.size();i++){ 
+	  //for(const auto& econtit : econtdata){
+	    if(econtdata.at(i).first!=moduleId) continue;//assume that order is the same in econtdata and tcprocdata
+	    std::cout<<"ModuleID in econt data "<<econtdata.at(i).first<<std::endl;
+      std::cout<<"Module ID in tcdata "<<tcprocdata.at(i).first<<std::endl;
+      trdata = econtdata.at(i).second ;
+      tcdata = tcprocdata.at(i).second;
+      if(relayNumber>1727211141) triggerCellsFromTriggerData = createTCsFromTriggerData(moduleId,tcdata);
 
-	    if(eventCondn) std::cout << "event: " << event << ", moduleId : " << econtit.first << std::endl;
+	    if(eventCondn) std::cout << "event: " << event << ", moduleId : " << econtdata.at(i).first << std::endl;
 	    //if(eventCondn and iecond==0 and ilink==0) TcRawdata.second.print();
 	    bool hasMatched = false;
 	    for(int ibx=0;ibx<7;ibx++){
@@ -675,10 +686,11 @@ int main(int argc, char** argv)
 
             tcs_out_tcproc_TB.resize(0);
             bool isDataTCsAssigned=false;
-            for (auto &obj : triggerCellsFromTriggerData[ibx]){
-              if(obj.first==moduleId) tcs_out_tcproc_TB=obj.second; isDataTCsAssigned=true;
-            }
-
+            std::cout<<"size of triggerCellsFromTriggerData "<<triggerCellsFromTriggerData[ibx].size()<<std::endl;
+            if(triggerCellsFromTriggerData[ibx].size()>0) tcs_out_tcproc_TB=triggerCellsFromTriggerData[ibx]; isDataTCsAssigned = true;
+            
+            std::cout<<"isDataTCsAssigned "<<isDataTCsAssigned<<std::endl;
+            std::cout<<"trigger cells in tcs_out_tcproc_TB"<<tcs_out_tcproc_TB.size()<<std::endl;
             if(isDataTCsAssigned){//Only try to do comparison if we have read out TB data since some modules are missing
               bool diffTCs=hasDifferentTCs(tcs_out_SA,tcs_out_tcproc_TB);
 
@@ -770,9 +782,8 @@ int main(int argc, char** argv)
   
       tcs_out_tcproc_TB.resize(0);
       bool isDataTCsAssigned=false;
-      for (auto &obj : triggerCellsFromTriggerData[refbx]){
-        if(obj.first==moduleId) tcs_out_tcproc_TB=obj.second; isDataTCsAssigned=true;
-      }
+      if(triggerCellsFromTriggerData[refbx].size()>0) tcs_out_tcproc_TB=triggerCellsFromTriggerData[refbx]; isDataTCsAssigned = true;
+
       if(isDataTCsAssigned){
         bool diffTCs=hasDifferentTCs(tcs_out_SA,tcs_out_tcproc_TB);
   
