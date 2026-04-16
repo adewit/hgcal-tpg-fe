@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
   uint32_t runNumber(0);
   uint32_t linkNumber(0);
   uint64_t totEvents(0);
-  uint64_t nofEvents(10);
+  uint64_t nofEvents(1000);
   std::istringstream issRelay(argv[1]);
   issRelay >> relayNumber;
   //Notes:
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
   //===============================================================================================================================
   void BookHistograms(TDirectory *&, uint32_t);
   void FillHistogram(TDirectory *&, l1thgcfirmware::HGCalTriggerCellSACollection, l1thgcfirmware::HGCalTriggerCellSACollection);
-  TFile *fout = new TFile(Form("Diff_TCProc_Relay-%u.root", relayNumber), "recreate");
+  TFile *fout = new TFile(Form("Diff_TCProc_Relay-%u_rerun.root", relayNumber), "recreate");
   TDirectory *dir_diff = fout->mkdir("diff_plots");
   BookHistograms(dir_diff, relayNumber);
   //===============================================================================================================================
@@ -513,50 +513,157 @@ void BookHistograms(TDirectory *&dir_diff, uint32_t relay) {
   hTCProcDiff256_quantities->GetYaxis()->SetTitle("Entries");
   hTCProcDiff256_quantities->SetDirectory(dir_diff);
 
+  TH2D *hTCProc256_2denergy = new TH2D("hTCProc256_2denergy", Form("TC processor energy FW vs Emulator mod 256 for Relay: %u", relay), 100, -0.5, 99.5,100,-0.5,99.5);
+  hTCProc256_2denergy->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc256_2denergy->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc256_2denergy->SetDirectory(dir_diff);
+
+  TH2D *hTCProc256_2denergy_nozero = new TH2D("hTCProc256_2denergy_nozero", Form("TC processor energy FW vs Emulator mod 256 for Relay: %u", relay), 100, -0.5, 99.5,100,-0.5,99.5);
+  hTCProc256_2denergy_nozero->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc256_2denergy_nozero->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc256_2denergy_nozero->SetDirectory(dir_diff);
+
+
   TH1D *hTCProcDiff768_quantities = new TH1D("hTCProcDiff768_quantities", Form("TC processor difference in output quantities mod 768 for Relay: %u", relay), 52, -0.5, 25.5);
   hTCProcDiff768_quantities->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator in module 768");
   hTCProcDiff768_quantities->GetYaxis()->SetTitle("Entries");
   hTCProcDiff768_quantities->SetDirectory(dir_diff);
+
+  TH2D *hTCProc768_2denergy = new TH2D("hTCProc768_2denergy", Form("TC processor energy FW vs Emulator mod 768 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc768_2denergy->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc768_2denergy->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc768_2denergy->SetDirectory(dir_diff);
+
+  TH2D *hTCProc768_2denergy_nozero = new TH2D("hTCProc768_2denergy_nozero", Form("TC processor energy FW vs Emulator mod 768 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc768_2denergy_nozero->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc768_2denergy_nozero->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc768_2denergy_nozero->SetDirectory(dir_diff);
 
   TH1D *hTCProcDiff1280_quantities = new TH1D("hTCProcDiff1280_quantities", Form("TC processor difference in output quantities mod 1280 for Relay: %u", relay), 52, -0.5, 25.5);
   hTCProcDiff1280_quantities->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator in module 1280");
   hTCProcDiff1280_quantities->GetYaxis()->SetTitle("Entries");
   hTCProcDiff1280_quantities->SetDirectory(dir_diff);
 
+  TH2D *hTCProc1280_2denergy = new TH2D("hTCProc1280_2denergy", Form("TC processor energy FW vs Emulator mod 1280 for Relay: %u", relay), 100, -0.5, 99.5,100,-0.5,99.5);
+  hTCProc1280_2denergy->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc1280_2denergy->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc1280_2denergy->SetDirectory(dir_diff);
+
+  TH2D *hTCProc1280_2denergy_nozero = new TH2D("hTCProc1280_2denergy_nozero", Form("TC processor energy FW vs Emulator mod 1280 for Relay: %u", relay), 100, -0.5, 99.5,100,-0.5,99.5);
+  hTCProc1280_2denergy_nozero->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc1280_2denergy_nozero->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc1280_2denergy_nozero->SetDirectory(dir_diff);
+
   TH1D *hTCProcDiff8448_quantities = new TH1D("hTCProcDiff8448_quantities", Form("TC processor difference in output quantities mod 8448 for Relay: %u", relay), 52, -0.5, 25.5);
   hTCProcDiff8448_quantities->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator in module 8448");
   hTCProcDiff8448_quantities->GetYaxis()->SetTitle("Entries");
   hTCProcDiff8448_quantities->SetDirectory(dir_diff);
+
+  TH2D *hTCProc8448_2denergy = new TH2D("hTCProc8448_2denergy", Form("TC processor energy FW vs Emulator mod 8448 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc8448_2denergy->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc8448_2denergy->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc8448_2denergy->SetDirectory(dir_diff);
+
+  TH2D *hTCProc8448_2denergy_nozero = new TH2D("hTCProc8448_2denergy_nozero", Form("TC processor energy FW vs Emulator mod 8448 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc8448_2denergy_nozero->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc8448_2denergy_nozero->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc8448_2denergy_nozero->SetDirectory(dir_diff);
+
+
 
   TH1D *hTCProcDiff8960_quantities = new TH1D("hTCProcDiff8960_quantities", Form("TC processor difference in output quantities mod 8960 for Relay: %u", relay), 52, -0.5, 25.5);
   hTCProcDiff8960_quantities->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator in module 8960");
   hTCProcDiff8960_quantities->GetYaxis()->SetTitle("Entries");
   hTCProcDiff8960_quantities->SetDirectory(dir_diff);
 
+  TH2D *hTCProc8960_2denergy = new TH2D("hTCProc8960_2denergy", Form("TC processor energy FW vs Emulator mod 8960 for Relay: %u", relay), 100, -0.5, 99.5, 100, -0.5,99.5);
+  hTCProc8960_2denergy->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc8960_2denergy->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc8960_2denergy->SetDirectory(dir_diff);
+
+  TH2D *hTCProc8960_2denergy_nozero = new TH2D("hTCProc8960_2denergy_nozero", Form("TC processor energy FW vs Emulator mod 8960 for Relay: %u", relay), 100, -0.5, 99.5, 100, -0.5,99.5);
+  hTCProc8960_2denergy_nozero->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc8960_2denergy_nozero->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc8960_2denergy_nozero->SetDirectory(dir_diff);
+
   TH1D *hTCProcDiff9472_quantities = new TH1D("hTCProcDiff9472_quantities", Form("TC processor difference in output quantities mod 9472 for Relay: %u", relay), 52, -0.5, 25.5);
   hTCProcDiff9472_quantities->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator in module 9472");
   hTCProcDiff9472_quantities->GetYaxis()->SetTitle("Entries");
   hTCProcDiff9472_quantities->SetDirectory(dir_diff);
+
+  TH2D *hTCProc9472_2denergy = new TH2D("hTCProc9472_2denergy", Form("TC processor energy FW vs Emulator mod 9472 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc9472_2denergy->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc9472_2denergy->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc9472_2denergy->SetDirectory(dir_diff);
+
+  TH2D *hTCProc9472_2denergy_nozero = new TH2D("hTCProc9472_2denergy_nozero", Form("TC processor energy FW vs Emulator mod 9472 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc9472_2denergy_nozero->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc9472_2denergy_nozero->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc9472_2denergy_nozero->SetDirectory(dir_diff);
 
   TH1D *hTCProcDiff16640_quantities = new TH1D("hTCProcDiff16640_quantities", Form("TC processor difference in output quantities mod 16640 for Relay: %u", relay), 52, -0.5, 25.5);
   hTCProcDiff16640_quantities->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator in module 16640");
   hTCProcDiff16640_quantities->GetYaxis()->SetTitle("Entries");
   hTCProcDiff16640_quantities->SetDirectory(dir_diff);
 
+  TH2D *hTCProc16640_2denergy = new TH2D("hTCProc16640_2denergy", Form("TC processor energy FW vs Emulator mod 16640 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc16640_2denergy->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc16640_2denergy->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc16640_2denergy->SetDirectory(dir_diff);
+
+  TH2D *hTCProc16640_2denergy_nozero = new TH2D("hTCProc16640_2denergy_nozero", Form("TC processor energy FW vs Emulator mod 16640 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc16640_2denergy_nozero->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc16640_2denergy_nozero->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc16640_2denergy_nozero->SetDirectory(dir_diff);
+
   TH1D *hTCProcDiff17152_quantities = new TH1D("hTCProcDiff17152_quantities", Form("TC processor difference in output quantities mod 17152 for Relay: %u", relay), 52, -0.5, 25.5);
   hTCProcDiff17152_quantities->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator in module 17152");
   hTCProcDiff17152_quantities->GetYaxis()->SetTitle("Entries");
   hTCProcDiff17152_quantities->SetDirectory(dir_diff);
+
+  TH2D *hTCProc17152_2denergy = new TH2D("hTCProc17152_2denergy", Form("TC processor energy FW vs Emulator mod 17152 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc17152_2denergy->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc17152_2denergy->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc17152_2denergy->SetDirectory(dir_diff);
+
+  TH2D *hTCProc17152_2denergy_nozero = new TH2D("hTCProc17152_2denergy_nozero", Form("TC processor energy FW vs Emulator mod 17152 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc17152_2denergy_nozero->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc17152_2denergy_nozero->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc17152_2denergy_nozero->SetDirectory(dir_diff);
+
+
 
   TH1D *hTCProcDiff24832_quantities = new TH1D("hTCProcDiff24832_quantities", Form("TC processor difference in output quantities mod 24832 for Relay: %u", relay), 52, -0.5, 25.5);
   hTCProcDiff24832_quantities->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator in module 24832");
   hTCProcDiff24832_quantities->GetYaxis()->SetTitle("Entries");
   hTCProcDiff24832_quantities->SetDirectory(dir_diff);
 
+  TH2D *hTCProc24832_2denergy = new TH2D("hTCProc24832_2denergy", Form("TC processor energy FW vs Emulator mod 24832 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc24832_2denergy->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc24832_2denergy->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc24832_2denergy->SetDirectory(dir_diff);
+
+  TH2D *hTCProc24832_2denergy_nozero = new TH2D("hTCProc24832_2denergy_nozero", Form("TC processor energy FW vs Emulator mod 24832 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc24832_2denergy_nozero->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc24832_2denergy_nozero->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc24832_2denergy_nozero->SetDirectory(dir_diff);
+
   TH1D *hTCProcDiff25344_quantities = new TH1D("hTCProcDiff25344_quantities", Form("TC processor difference in output quantities mod 25344 for Relay: %u", relay), 52, -0.5, 25.5);
   hTCProcDiff25344_quantities->GetXaxis()->SetTitle("Difference between firmware TC processor and emulator in module 25344");
   hTCProcDiff25344_quantities->GetYaxis()->SetTitle("Entries");
   hTCProcDiff25344_quantities->SetDirectory(dir_diff);
+
+  TH2D *hTCProc25344_2denergy = new TH2D("hTCProc25344_2denergy", Form("TC processor energy FW vs Emulator mod 25344 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc25344_2denergy->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc25344_2denergy->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc25344_2denergy->SetDirectory(dir_diff);
+
+  TH2D *hTCProc25344_2denergy_nozero = new TH2D("hTCProc25344_2denergy_nozero", Form("TC processor energy FW vs Emulator mod 25344 for Relay: %u", relay), 100, -0.5, 99.5, 100,-0.5,99.5);
+  hTCProc25344_2denergy_nozero->GetXaxis()->SetTitle("Energy (firmware)");
+  hTCProc25344_2denergy_nozero->GetYaxis()->SetTitle("Energy (emulator)");
+  hTCProc25344_2denergy_nozero->SetDirectory(dir_diff);
+
+
 }
 
 void FillHistogram(TDirectory *&dir_diff, l1thgcfirmware::HGCalTriggerCellSACollection tcProcEmulator, l1thgcfirmware::HGCalTriggerCellSACollection tcProcTB) {
@@ -577,25 +684,47 @@ void FillHistogram(TDirectory *&dir_diff, l1thgcfirmware::HGCalTriggerCellSAColl
                         std::abs(int(tcProcEmulator.at(i).channel() - tcProcTB.at(i).channel())) + std::abs(int(tcProcEmulator.at(i).frame() - tcProcTB.at(i).frame())) +
                         std::abs(int(tcProcEmulator.at(i).column() - tcProcTB.at(i).column()));
     ((TH1D *)list->FindObject("hTCProcDiff_quantities"))->Fill(diffsize);
-    if (theModuleId == 256)
+    if (theModuleId == 256) {
       ((TH1D *)list->FindObject("hTCProcDiff256_quantities"))->Fill(diffsize);
-    else if (theModuleId == 768)
+      std::cout<<"Energy is "<<tcProcTB.at(i).energy()<<" Emulation "<<tcProcEmulator.at(i).energy()<<std::endl;
+      ((TH2D *)list->FindObject("hTCProc256_2denergy"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+      if(!(tcProcTB.at(i).energy()==0&&tcProcEmulator.at(i).energy()==0)) ((TH2D *)list->FindObject("hTCProc256_2denergy_nozero"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+    } else if (theModuleId == 768) {
       ((TH1D *)list->FindObject("hTCProcDiff768_quantities"))->Fill(diffsize);
-    else if (theModuleId == 1280)
+      ((TH2D *)list->FindObject("hTCProc768_2denergy"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+      if(!(tcProcTB.at(i).energy()==0&&tcProcEmulator.at(i).energy()==0)) ((TH2D *)list->FindObject("hTCProc768_2denergy_nozero"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+    } else if (theModuleId == 1280) {
       ((TH1D *)list->FindObject("hTCProcDiff1280_quantities"))->Fill(diffsize);
-    else if (theModuleId == 8448)
+      ((TH2D *)list->FindObject("hTCProc1280_2denergy"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+      if(!(tcProcTB.at(i).energy()==0&&tcProcEmulator.at(i).energy()==0)) ((TH2D *)list->FindObject("hTCProc1280_2denergy_nozero"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+    } else if (theModuleId == 8448) {
       ((TH1D *)list->FindObject("hTCProcDiff8448_quantities"))->Fill(diffsize);
-    else if (theModuleId == 8960)
+      ((TH2D *)list->FindObject("hTCProc8448_2denergy"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+      if(!(tcProcTB.at(i).energy()==0&&tcProcEmulator.at(i).energy()==0)) ((TH2D *)list->FindObject("hTCProc8448_2denergy_nozero"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+    } else if (theModuleId == 8960) {
       ((TH1D *)list->FindObject("hTCProcDiff8960_quantities"))->Fill(diffsize);
-    else if (theModuleId == 9472)
+      ((TH2D *)list->FindObject("hTCProc8960_2denergy"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+      if(!(tcProcTB.at(i).energy()==0&&tcProcEmulator.at(i).energy()==0)) ((TH2D *)list->FindObject("hTCProc8960_2denergy_nozero"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+    } else if (theModuleId == 9472) {
       ((TH1D *)list->FindObject("hTCProcDiff9472_quantities"))->Fill(diffsize);
-    else if (theModuleId == 16640)
+      ((TH2D *)list->FindObject("hTCProc9472_2denergy"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+      if(!(tcProcTB.at(i).energy()==0&&tcProcEmulator.at(i).energy()==0)) ((TH2D *)list->FindObject("hTCProc9472_2denergy_nozero"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+    } else if (theModuleId == 16640) {
       ((TH1D *)list->FindObject("hTCProcDiff16640_quantities"))->Fill(diffsize);
-    else if (theModuleId == 17152)
+      ((TH2D *)list->FindObject("hTCProc16640_2denergy"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+      if(!(tcProcTB.at(i).energy()==0&&tcProcEmulator.at(i).energy()==0)) ((TH2D *)list->FindObject("hTCProc16640_2denergy_nozero"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+    } else if (theModuleId == 17152) {
       ((TH1D *)list->FindObject("hTCProcDiff17152_quantities"))->Fill(diffsize);
-    else if (theModuleId == 24832)
+      ((TH2D *)list->FindObject("hTCProc17152_2denergy"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+      if(!(tcProcTB.at(i).energy()==0&&tcProcEmulator.at(i).energy()==0)) ((TH2D *)list->FindObject("hTCProc17152_2denergy_nozero"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+    } else if (theModuleId == 24832) {
       ((TH1D *)list->FindObject("hTCProcDiff24832_quantities"))->Fill(diffsize);
-    else if (theModuleId == 25344)
+      ((TH2D *)list->FindObject("hTCProc24832_2denergy"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+      if(!(tcProcTB.at(i).energy()==0&&tcProcEmulator.at(i).energy()==0)) ((TH2D *)list->FindObject("hTCProc24832_2denergy_nozero"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+    } else if (theModuleId == 25344) {
       ((TH1D *)list->FindObject("hTCProcDiff25344_quantities"))->Fill(diffsize);
+      ((TH2D *)list->FindObject("hTCProc25344_2denergy"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+      if(!(tcProcTB.at(i).energy()==0&&tcProcEmulator.at(i).energy()==0)) ((TH2D *)list->FindObject("hTCProc25344_2denergy_nozero"))->Fill(tcProcTB.at(i).energy(),tcProcEmulator.at(i).energy());
+    }
   }
 }
