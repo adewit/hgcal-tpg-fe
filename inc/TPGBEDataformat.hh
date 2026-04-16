@@ -8,7 +8,7 @@
 #include <cassert>
 #include <array>
 #include "TPGTCFloats.hh"
-#include "HLS_arbitrary_Precision_Types/include/ap_int.h"
+#include "ap_int.h"
 
 namespace TPGBEDataformat{
 

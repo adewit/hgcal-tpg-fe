@@ -50,6 +50,13 @@ int main(int argc, char** argv) {
     doTCProc = true;
   }
 
+  bool doInjectBX = false;
+  int injectBX=0;
+  if(argc > 2){
+    doInjectBX = true;
+    injectBX=atoi(argv[2]);
+  }
+
   TTree evtstree("Events", "Tree");
   Int_t mod_, address_, col_, evt_;
   Long64_t energy_;
@@ -98,6 +105,7 @@ int main(int argc, char** argv) {
     unsigned nConnected = 0;  //Number of connected lpGBT/unpackers -> this will be used as module number. Works because some lpGBTs not connected at all!
     for (unsigned lp(0); lp < TPGStage1Emulation::Stage1IOFwCfg::MaximumLpgbtPairs; lp++) {
       bool connected(false);
+      std::cout<<"lp is "<<lp<<std::endl;
 
       for (unsigned up(0); up < TPGStage1Emulation::Stage1IOFwCfg::MaximumUnpackersPerLpgbtPair; up++) {
         if (fwCfg.connected(lp, up)) {
@@ -106,7 +114,26 @@ int main(int argc, char** argv) {
           TPGFEDataformat::Type type = fwCfg.type(lp, up);
           unsigned nTc = fwCfg.numberOfTCs(lp, up);
 
-          TPGFEModuleEmulation::ECONTEmulation::generateRandomTcRawData(ibx, type, nTc, vTc);
+
+	  if(doInjectBX){
+              if(ibx==injectBX){
+        	  TPGFEModuleEmulation::ECONTEmulation::generateFixedEnergyTcRawData(ibx,(lp*2)+1,type,nTc,vTc);
+	      } else {
+        	  TPGFEModuleEmulation::ECONTEmulation::generateZeroEnergyTcRawData(ibx, type, nTc, vTc);
+              }
+	   } else{
+	  //if(nConnected<127 && ibx==10){
+        	  TPGFEModuleEmulation::ECONTEmulation::generateFixedEnergyTcRawData(ibx,ibx,type,nTc,vTc); //energy is bx number
+          }
+        	  //TPGFEModuleEmulation::ECONTEmulation::generateFixedEnergyTcRawData(ibx,nConnected+1,type,nTc,vTc); //module number is energy, for 11th BX
+          /*} else {
+        	  TPGFEModuleEmulation::ECONTEmulation::generateZeroEnergyTcRawData(ibx, type, nTc, vTc);
+          }*/
+	  /*if(ibx==20 && nConnected==14){ //send 11th bx for good measure
+              TPGFEModuleEmulation::ECONTEmulation::generateFixedEnergyTcRawData(ibx, 100, type, nTc, vTc);
+	  } else {
+        	  TPGFEModuleEmulation::ECONTEmulation::generateZeroEnergyTcRawData(ibx, type, nTc, vTc);
+          }*/
           
           TPGFEModuleEmulation::ECONTEmulation::convertToElinkData(bxi, vTc, vEl.data() + fwCfg.firstElink(lp, up));
 
@@ -208,7 +235,7 @@ int main(int argc, char** argv) {
     boardData.add(theEmpOutput.first * 2, channelData_1);
     boardData.add(theEmpOutput.first * 2 + 1, channelData_2);
   }
-  write(boardData, "stage1-PRR/RandomlyGenerated.txt", l1t::demo::FileFormat::EMPv2);
+  write(boardData, "stage1-PRR/FixedEnergy_linkpair_uniquetcaddr_bx_"+std::to_string(injectBX)+".txt", l1t::demo::FileFormat::EMPv2);
 
   return total_error_code;
 }

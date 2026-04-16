@@ -26,6 +26,7 @@ int getModuleNumber(int frameNum_, int channelNum_, int framesToIgnore_, int cha
 int getInputEvent(int moduleNum_, int outEvt_, int bchiOff_, int bclowOff_, int stcOff_){
    int inputEvt=0;
    int bareModuleNum = moduleNum_%5;
+   std::cout<<"Module number "<<moduleNum_<<std::endl;
   if(bareModuleNum==0) inputEvt=outEvt_-bchiOff_;
   else if(bareModuleNum==1) inputEvt=outEvt_-bclowOff_;
   else if(bareModuleNum==2||bareModuleNum==3||bareModuleNum==4) inputEvt=outEvt_-stcOff_;
@@ -105,8 +106,10 @@ int main(int argc, char **argv)
                 evtin_ = getInputEvent(mod_,evtout_,offsetBCHi_,offsetBCLo_,offsetSTC_);//Input BX number - ie the output BX adjusted for the latency of each specific unpacker
                 if(evtin_>-1){//Only fill the tree if the input event number is at least 0
                     for(unsigned tcno_=0; tcno_<4;tcno_++){
-                        energy_ = extractTC(frame.data,tcno_)&0x1FF;
-                        address_= (extractTC(frame.data,tcno_)>>9)&0x3F;
+                        //energy_ = extractTC(frame.data,tcno_)&0x1FF;
+                        //address_= (extractTC(frame.data,tcno_)>>9)&0x3F;
+			address_=extractTC(frame.data,tcno_)&0x3F;
+			energy_=(extractTC(frame.data,tcno_)>>6)&0x1FF;
                         col_ = getColumnNumber(mod_,tcno_,iFrame,ignoreFirstNFrame_);
                         if(mod_!=-999&&col_!=-999) evtstree.Fill();//Only fill the tree if the module number is valid and if the column number is valid. 
                     }
@@ -117,17 +120,25 @@ int main(int argc, char **argv)
       if(doPrint_){
         std::cout << "channel "<<channel.first<<" frame "<<iFrame<< "start orbit "<<frame.startOfOrbit <<" start packet "<< frame.startOfPacket << " end packet "<< frame.endOfPacket << "valid "<< frame.valid << " data  " << std::hex << frame.data << std::dec << std::endl;
         std::cout<<"TCs 0 "<< extractTC(frame.data,0) << " 1 "<< extractTC(frame.data,1) <<" 2 "<<extractTC(frame.data,2) << " 3 "<<extractTC(frame.data,3)<<std::endl;
-        uint32_t tc_energy_0 = extractTC(frame.data,0)&0x1FF;
-        uint32_t tc_address_0 = (extractTC(frame.data,0)>>9)&0x3F;
+        //uint32_t tc_energy_0 = extractTC(frame.data,0)&0x1FF;
+        //uint32_t tc_address_0 = (extractTC(frame.data,0)>>9)&0x3F;
+        uint32_t tc_energy_0 = (extractTC(frame.data,0)>>6)&0x1FF;
+        uint32_t tc_address_0 = (extractTC(frame.data,0))&0x3F;
         std::cout<<"TC 0 energy "<< tc_energy_0<<" TC 0 address "<<tc_address_0<<std::endl;
-        uint32_t tc_energy_1 = extractTC(frame.data,1)&0x1FF;
-        uint32_t tc_address_1 = (extractTC(frame.data,1)>>9)&0x3F;
+        //uint32_t tc_energy_1 = extractTC(frame.data,1)&0x1FF;
+        //uint32_t tc_address_1 = (extractTC(frame.data,1)>>9)&0x3F;
+        uint32_t tc_energy_1 = (extractTC(frame.data,1)>>6)&0x1FF;
+        uint32_t tc_address_1 = (extractTC(frame.data,1))&0x3F;
         std::cout<<"TC 1 energy "<< tc_energy_1<<" TC 1 address "<<tc_address_1<<std::endl;
-        uint32_t tc_energy_2 = extractTC(frame.data,2)&0x1FF;
-        uint32_t tc_address_2 = (extractTC(frame.data,2)>>9)&0x3F;
+        //uint32_t tc_energy_2 = extractTC(frame.data,2)&0x1FF;
+        //uint32_t tc_address_2 = (extractTC(frame.data,2)>>9)&0x3F;
+        uint32_t tc_energy_2 = (extractTC(frame.data,2)>>6)&0x1FF;
+        uint32_t tc_address_2 = (extractTC(frame.data,2))&0x3F;
         std::cout<<"TC 2 energy "<< tc_energy_2<<" TC 2 address "<<tc_address_2<<std::endl;
-        uint32_t tc_energy_3 = extractTC(frame.data,3)&0x1FF;
-        uint32_t tc_address_3 = (extractTC(frame.data,3)>>9)&0x3F;
+        //uint32_t tc_energy_3 = extractTC(frame.data,3)&0x1FF;
+        //uint32_t tc_address_3 = (extractTC(frame.data,3)>>9)&0x3F;
+        uint32_t tc_energy_3 = (extractTC(frame.data,3)>>6)&0x1FF;
+        uint32_t tc_address_3 = (extractTC(frame.data,3))&0x3F;
         std::cout<<"TC 3 energy "<< tc_energy_3<<" TC 3 address "<<tc_address_3<<std::endl;
       }
       iFrame++;      

@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
       doPrint=true;
   }
 
-  TFile fileout("TCProcessor_EmulationResults.root","recreate");
+  TFile fileout("TCProcessor_EmulationResults_FixedEnergy_linkpair_uniquetcaddr_bx_50.root","recreate");
   TTree evtstree("Events","Tree");
   Int_t mod_,link_,address_,col_,evt_;
   Long64_t energy_;
@@ -67,7 +67,8 @@ int main(int argc, char** argv) {
   evtstree.Branch("Energy", &energy_,"energy_/L");
 
   //std::string inputFileName = "data_v11_rx_MsCounter/rx_summary.txt";
-  std::string inputFileName = "stage1-PRR/RandomGenWithBXBits_Corrected.txt";
+  //std::string inputFileName = "stage1-PRR/MostlyEmpty_bx11.txt";
+  std::string inputFileName = "stage1-PRR/FixedEnergy_linkpair_uniquetcaddr_bx_50.txt";
 
   l1t::demo::BoardData inputs = l1t::demo::read( inputFileName, l1t::demo::FileFormat::EMPv2 );
 

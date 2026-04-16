@@ -3,7 +3,8 @@
  Contact: r.shukla@imperial.ac.uk
 
 """
-
+import ROOT
+import array
 import argparse
 from emp_buffer_utils import read_emp_buffer_cspV3, lword
 
@@ -120,8 +121,10 @@ def inspect_link_stage1(alinkdata, alinkgroup, aexp_packet_start=0):
     err_pkt_start_index = 0
 
     for nword, llword in enumerate(alinkdata):
+        #print("nword ",nword," llword ",llword)
         #if (nword < 300):
         #   llword.print()
+        #print("llword.start ",llword.start, " llword.valid ",llword.valid, " llword.data ",llword.data)
         if (llword.start == 1 and llword.valid == 1):
           # packet has started
           if (in_packet): # last packet has ended
@@ -142,6 +145,8 @@ def inspect_link_stage1(alinkdata, alinkgroup, aexp_packet_start=0):
         
         if(in_packet and llword.valid == 1):
             # disssemble packet
+            #print("disassembling packet")
+            #print("llword.data is ",llword.data)
             hdr = (llword.data & 0x7000000000000000) >> 61
             tsum_mask = 0x1FE0000000000000
             tc_mask = 0x00001FFFC0000000
@@ -174,7 +179,9 @@ def inspect_link_stage1(alinkdata, alinkgroup, aexp_packet_start=0):
             
         
             for n in range(3):
+              #print("tc mask ",tc_mask," n=",n,"tc_mask >> (n*15)",tc_mask>>(n*15), "llword.data&tcmask... ",llword.data & (tc_mask >> (n*15)), "shifted to 30-15*n ", (llword.data & (tc_mask >> (n*15))) >> (30 - 15*n))
               tc_temp = (llword.data & (tc_mask >> (n*15))) >> (30 - 15*n)
+              #print("trigger cell temp for n=",n," ",tc_temp)
               tc.append(tc_temp)
               #tc_hdr = (tc_temp >> 12) & 0x7
               # no checking for TCs
@@ -266,14 +273,20 @@ if __name__ == "__main__":
 
     all_args.add_argument("--ndump", type=int, required=False, default = 0,
     help="Number of the link, for which TC and pTTs to be dumped to a file.")
+
+    all_args.add_argument("--rootfile", type=str, required=False, default="outtree.root",
+    help="Output root file name")
    
     args = all_args.parse_args()
 
     #"s1_build_data/RX_60_pairs_ouput_orderV1/data_20250207_3/tx_summary.txt"
     linkdata_array = read_emp_buffer_cspV3(args.in_file, args.nlinks_in)
     link_keys = list(linkdata_array.keys())
-    #print(len(link_keys))
-    #print(link_keys)
+    print("link information")
+    print(len(link_keys))
+    print(link_keys)
+    #for word in linkdata_array[88]:
+    #    print("word.valid ", word.valid, "word.data ", word.data)
 
     # Output link order V1
     # TMUX 0 : 16:27, 100:105
@@ -294,34 +307,74 @@ if __name__ == "__main__":
     bx_ids_array = []
     ntmux = 0
 
+    outtree = ROOT.TTree("outtree","outtree")
+    link_number = array.array('f',[0])
+    outtree.Branch('link_number',link_number,'link_number/F')
+    tc_number = array.array('f',[0])
+    outtree.Branch('tc_number',tc_number,'tc_number/F')
+    tc_energy = array.array('f',[0])
+    outtree.Branch('tc_energy',tc_energy,'tc_energy/F')
+    tc_address = array.array('f',[0])
+    outtree.Branch('tc_address',tc_address,'tc_address/F')
+
     # copy 18 links
-    for i in range(18):
-      link_data_list.append(linkdata_array[link_keys_tmux0[i]])
+    #for i in range(4,124):
+    #for i in range(4,18):
+      #link_data_list.append(linkdata_array[link_keys_tmux0[i]])
+    for ntmux in range(6):
+      link_data_list = []
+      for i in range(18):
+        link_data_list.append((link_keys[(18*ntmux)+i],linkdata_array[link_keys[(18*ntmux)+i]]))
 
     
-    print(f" Checking TMUX {ntmux}")
-    for nlink, linkdata in enumerate(link_data_list):
-      print(f" Checking link : {nlink} : ")
-      bx_ids, tc, tsum = inspect_link_stage1(linkdata, ntmux)
-      bx_ids_array.append(bx_ids)
-      if(nlink==args.ndump):
+      print(f" Checking TMUX {ntmux}")
+      for nlink, linkdata in enumerate(link_data_list):
+        print(f" CHECKING LINK : {nlink} : ")
+        bx_ids, tc, tsum = inspect_link_stage1(linkdata[1], 5-ntmux)
+        bx_ids_array.append(bx_ids)
+        print('bx_ids ', bx_ids)
+        print(f"NTC\tTC-label\tTC-Energy\n")
+        for ntc, tc_data in enumerate(tc):
+            #print("for tc")
+            #print(tc_data)
+            #print("we have")
+            #print(f"{ntc}\t{((tc_data & 0x7e00) >> 9):03d}\t{ (tc_data & 0x1FF):03d}") #Raghu's order
+            print("tc data is",tc_data)
+            print(f"{ntc}\t{(((tc_data >>6) & 0x1FF)):03d}\t{ (tc_data & 0x3F):03d}") #Inverted order
+            #if((tc_data&0x1FF)>100):
+            #   print(f"ENERGY ABOVE 100 {ntc}\t{((tc_data & 0x7e00) >> 9):03d}\t{ (tc_data & 0x1FF):03d}\n")
+        #if(nlink==args.ndump):
         print(f" Dumping link : {nlink} : ")
         #dump TC data
+        tc_out_name = args.out_file_name + "%i_tc.txt"%nlink
+        pTT_out_name = args.out_file_name + "%i_pTT.txt"%nlink
         with open(tc_out_name, "w") as fw:
           fw.write(f"NTC\tTC-label\tTC-Energy\n") 
           for ntc, tc_data in enumerate(tc):
+            link_number[0] = linkdata[0]
+            tc_number[0] = ntc
+            tc_energy[0] = ((tc_data >>6) &0x1FF)
+            tc_address[0] = (tc_data & 0x3F)
+            outtree.Fill()
             # TC processor swaps E and Lable field
             # hex print
             #print(f" {ntc}  {((tc_data & 0x7e00) >> 9):02x}   { (tc_data & 0x1FF):03x} ")
             #print(f" {ntc}  {((tc_data & 0x7e00) >> 9):03d}   { (tc_data & 0x1FF):03d} ") 
-            fw.write(f"{ntc}\t{((tc_data & 0x7e00) >> 9):03d}\t{ (tc_data & 0x1FF):03d}\n") 
+            fw.write(f"{ntc}\t{((tc_data >>6) &0x1FF):03d}\t{ (tc_data & 0x3F):03d}\n") #inverted
+            #fw.write(f"{ntc}\t{((tc_data >>9) &0x3F):03d}\t{ (tc_data & 0x1FF):03d}\n") 
 
         
-        with open(pTT_out_name, "w") as fw:
-          fw.write(f"n_pTT\tpTT\n") 
-          for nptt, pTT in enumerate(tsum):
-            fw.write(f"{nptt}\t{((pTT & 0xFF)):03d}\n") 
+          with open(pTT_out_name, "w") as fw:
+            fw.write(f"n_pTT\tpTT\n") 
+            for nptt, pTT in enumerate(tsum):
+              fw.write(f"{nptt}\t{((pTT & 0xFF)):03d}\n") 
+
+    outfile = ROOT.TFile.Open(args.rootfile,"RECREATE")
+    outtree.Write()
+    outfile.Close()
+    
        
+
               
               
     """

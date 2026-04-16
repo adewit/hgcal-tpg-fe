@@ -172,7 +172,7 @@ namespace TPGFEModuleEmulation{
     void fillRandomTcRawData(unsigned bx);
     void fillZeroEnergyTcRawData(unsigned bx);
     
-    static void generateTcRawData(bool zero, unsigned bx,
+    static void generateTcRawData(bool fixed, unsigned fixedEnergy, unsigned bx,
 				  TPGFEDataformat::Type type,
 				  unsigned nTc,
 				  TPGFEDataformat::TcRawDataPacket &vtcrp);
@@ -184,7 +184,11 @@ namespace TPGFEModuleEmulation{
 					    TPGFEDataformat::Type type,
 					    unsigned nTc,
 					    TPGFEDataformat::TcRawDataPacket &vtcrp);
-    
+    static void generateFixedEnergyTcRawData(unsigned bx, unsigned fixedEnergy,
+					    TPGFEDataformat::Type type,
+					    unsigned nTc,
+					    TPGFEDataformat::TcRawDataPacket &vtcrp);
+
   private:
     uint32_t DecompressEcont(uint16_t compressed, bool density){
       //4E+3M with midpoint correction
@@ -866,7 +870,7 @@ namespace TPGFEModuleEmulation{
 					       TPGFEDataformat::Type type,
 					       unsigned nTc,
 					       TPGFEDataformat::TcRawDataPacket &vtcrp) {
-    generateTcRawData(false,bx,type,nTc,vtcrp);
+    generateTcRawData(false,0,bx,type,nTc,vtcrp);
   }
   
   void ECONTEmulation::generateZeroEnergyTcRawData(unsigned bx,
@@ -874,10 +878,19 @@ namespace TPGFEModuleEmulation{
 						   unsigned nTc,
 						   TPGFEDataformat::TcRawDataPacket &vtcrp) {
 
-    generateTcRawData(true,bx,type,nTc,vtcrp);
+    generateTcRawData(true,0,bx,type,nTc,vtcrp);
   }
+
+  void ECONTEmulation::generateFixedEnergyTcRawData(unsigned bx, unsigned fixedEnergy,
+						   TPGFEDataformat::Type type,
+						   unsigned nTc,
+						   TPGFEDataformat::TcRawDataPacket &vtcrp) {
+
+    generateTcRawData(true,fixedEnergy,bx,type,nTc,vtcrp);
+  }
+
   
-  void ECONTEmulation::generateTcRawData(bool zero, unsigned bx,
+  void ECONTEmulation::generateTcRawData(bool fixed, unsigned fixedEnergy, unsigned bx,
 					 TPGFEDataformat::Type type,
 					 unsigned nTc,
 					 TPGFEDataformat::TcRawDataPacket &vtcrp) {
@@ -885,33 +898,53 @@ namespace TPGFEModuleEmulation{
     //std::vector<TPGFEDataformat::TcRawData> &vtc(vtcrp.second);
     std::vector<TPGFEDataformat::TcRawData> &vtc(vtcrp.setTcData());
     vtcrp.setType(type);
+
   
+    std::vector<unsigned> address_constants;
+
+    if (nTc <6 ){
+        for(unsigned i=1; i<11; i++){
+	    if(i!=1&&i!=9&&i!=17&&i!=25&&i!=2&&i!=18&&i!=34){
+                address_constants.push_back(i);//Extract some constants to make addresses from
+            }
+        }
+    } else {
+        for(unsigned i=11; i<30; i++){
+	    if(i!=1&&i!=9&&i!=17&&i!=25&&i!=2&&i!=18&&i!=34){
+                address_constants.push_back(i);//Extract some constants to make addresses from
+            }
+        } 
+    }
+
     if(type==TPGFEDataformat::BestC) {
       vtc.resize(nTc);
-      vtcrp.setModuleSum(zero?0:rand()&0xff);
+      vtcrp.setModuleSum(fixed?fixedEnergy:rand()&0xff);
     
       unsigned step(48/nTc);
       //for(unsigned i(1);i<vtc.size();i++) {
       for(unsigned i(0);i<vtc.size();i++) {
-	      vtc[i].setTriggerCell(type,step*(i)+(rand()%step),zero?0:rand()&0x7f);
+	      vtc[i].setTriggerCell(type,address_constants.at(i),fixed?fixedEnergy:rand()&0x7f);
+	      //vtc[i].setTriggerCell(type,step*(i)+(address_constants.at(i)%step),fixed?fixedEnergy:rand()&0x7f);
       }
     
     } else if(type==TPGFEDataformat::STC4A) {
       vtc.resize(nTc);
       for(unsigned i(0);i<vtc.size();i++) {
-	vtc[i].setTriggerCell(type,rand()&0x3,zero?0:rand()&0x7f);
+	vtc[i].setTriggerCell(type,1,fixed?fixedEnergy:rand()&0x7f);
+	//vtc[i].setTriggerCell(type,address_constants.at(i)&0x3,fixed?fixedEnergy:rand()&0x7f);
       }
     
     } else if(type==TPGFEDataformat::STC4B) {
       vtc.resize(nTc);
       for(unsigned i(0);i<vtc.size();i++) {
-	vtc[i].setTriggerCell(type,rand()&0x3,zero?0:rand()&0x1ff);
+	vtc[i].setTriggerCell(type,address_constants.at(i)&0x3,fixed?fixedEnergy:rand()&0x1ff);
       }
     
     } else if(type==TPGFEDataformat::STC16) {
       vtc.resize(nTc);
       for(unsigned i(0);i<vtc.size();i++) {
-	vtc[i].setTriggerCell(type,rand()&0xf,zero?0:rand()&0x1ff);
+	vtc[i].setTriggerCell(type,2,fixed?fixedEnergy:rand()&0x1ff);
+	//vtc[i].setTriggerCell(type,address_constants.at(i)&0xf,fixed?fixedEnergy:rand()&0x1ff);
       }
     
     } else {
