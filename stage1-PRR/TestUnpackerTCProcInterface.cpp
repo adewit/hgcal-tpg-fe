@@ -16,6 +16,8 @@ g++ -I TPGStage1Emulation -I. HGCalLayer1PhiOrderFwImpl.cc -I. TestUnpackerTCPro
 #include "HGCalTriggerCell_SA.h"
 #include "HGCalLayer1PhiOrderFwImpl.h"
 #include "HGCalLayer1PhiOrderFwConfig.h"
+#include "TMUXImpl.h"
+#include "TMUXConfig.h"
 #include "L1Trigger/DemonstratorTools/interface/utilities.h"
 #include "TPGFEDataformat.hh"
 #include "TPGBEDataformat.hh"
@@ -55,9 +57,10 @@ int main(int argc, char** argv) {
       doPrint=true;
   }
 
-  TFile fileout("TCProcessor_EmulationResults_FixedEnergy_linkpair_uniquetcaddr_bx_50.root","recreate");
+  TFile fileout("TCProcessor_EmulationResults_FixedEnergy_bx25.root","recreate");
+  //TFile fileout("TCProcessor_EmulationResults_RandomData_AllBX.root","recreate");
   TTree evtstree("Events","Tree");
-  Int_t mod_,link_,address_,col_,evt_;
+  Int_t mod_,link_,address_,col_,evt_,tmuxlink_,tmuxslot_;
   Long64_t energy_;
   evtstree.Branch("Event", &evt_,"evt_/I");
   evtstree.Branch("Module", &mod_,"mod_/I");
@@ -65,10 +68,13 @@ int main(int argc, char** argv) {
   evtstree.Branch("Address", &address_,"address_/I");
   evtstree.Branch("Column", &col_,"col_/I");
   evtstree.Branch("Energy", &energy_,"energy_/L");
+  evtstree.Branch("TMUXLink", &tmuxlink_,"tmuxlink_/I");
+  evtstree.Branch("TMUXSlot", &tmuxslot_,"tmuxslot_/I");
 
   //std::string inputFileName = "data_v11_rx_MsCounter/rx_summary.txt";
   //std::string inputFileName = "stage1-PRR/MostlyEmpty_bx11.txt";
-  std::string inputFileName = "stage1-PRR/FixedEnergy_linkpair_uniquetcaddr_bx_50.txt";
+  //std::string inputFileName = "stage1-PRR/RandomTCData_AllBX.txt";
+  std::string inputFileName = "stage1-PRR/FixedEnergy_linkpair_uniquetcaddr_bx_25.txt";
 
   l1t::demo::BoardData inputs = l1t::demo::read( inputFileName, l1t::demo::FileFormat::EMPv2 );
 
@@ -139,18 +145,32 @@ int main(int argc, char** argv) {
 
       //Run TC processor
       unsigned error_code = theAlgo_.run(theTCsFromOS, theConfiguration_, tcs_out_SA);
-  
+
       total_error_code+=error_code;
+     
+      l1thgcfirmware::TMUXConfig theTMUXConfig_;
+      theTMUXConfig_.configureTMUXMap();
+
+      l1thgcfirmware::HGCalTriggerCellSACollection tcs_tmux_out_SA;
+      l1thgcfirmware::TMUXImpl theTMUX_;
+
+      //Run TMUX
+      unsigned tmux_error_code = theTMUX_.run(tcs_out_SA,theTMUXConfig_,evt_,tcs_tmux_out_SA);
+      
+      total_error_code+=tmux_error_code;
+
   
       if(doPrint)
       std::cout<<"Printing TCs with column, channel, frame mapping"<<std::endl;
-      for (auto& tcobj : tcs_out_SA){
+      for (auto& tcobj : tcs_tmux_out_SA){
 	if(doPrint)
-        std::cout<<"Mod ID "<<tcobj.moduleId()<<" address "<<tcobj.phi()<<" energy "<<tcobj.energy()<<" col "<<tcobj.column()<<" chn "<<tcobj.channel()<<" frame "<<tcobj.frame()<<std::endl;
+        std::cout<<"Mod ID "<<tcobj.moduleId()<<" address "<<tcobj.phi()<<" energy "<<tcobj.energy()<<" col "<<tcobj.column()<<" chn "<<tcobj.channel()<<" frame "<<tcobj.frame()<<" TMUX output link "<<tcobj.tmuxOutputLink()<<" TMUX output slot "<<tcobj.tmuxOutputSlot()<<std::endl;
 	mod_=tcobj.moduleId();
 	address_=tcobj.phi();
 	energy_=tcobj.energy();
 	col_=tcobj.column();
+	tmuxlink_ = tcobj.tmuxOutputLink();
+	tmuxslot_ = tcobj.tmuxOutputSlot();
 	link_=channel_ids.at(2*(mod_/5));//This is the start
 	evtstree.Fill();
       }

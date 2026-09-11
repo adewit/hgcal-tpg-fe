@@ -40,6 +40,8 @@ namespace l1thgcfirmware {
     void setColumn(const int column) { column_ = column; }
     void setFrame(const unsigned frame) { frame_ = frame; }
     void setChannel(const unsigned channel) { channel_ = channel; }
+    void setTmuxOutputLink(const unsigned outputlink) { tmuxOutputLink_ = outputlink; }
+    void setTmuxOutputSlot(const unsigned outputslot) { tmuxOutputSlot_ = outputslot; }
 
     // Getters
     unsigned int clock() const { return clock_; }
@@ -59,6 +61,8 @@ namespace l1thgcfirmware {
     int column() const { return column_; }
     unsigned frame() const { return frame_; }
     unsigned channel() const { return channel_; }
+    unsigned tmuxOutputLink() const { return tmuxOutputLink_; }
+    unsigned tmuxOutputSlot() const { return tmuxOutputSlot_; }
 
     // Operators
     bool operator==(const HGCalTriggerCell& rhs) const;
@@ -82,6 +86,8 @@ namespace l1thgcfirmware {
     int column_;
     unsigned frame_;
     unsigned channel_;
+    unsigned tmuxOutputLink_;
+    unsigned tmuxOutputSlot_;
   };
 
   typedef std::vector<HGCalTriggerCell> HGCalTriggerCellSACollection;
